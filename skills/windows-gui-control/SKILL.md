@@ -45,6 +45,16 @@ more fun.
 | 4 | **Screen capture + look** — `Get-Screen` + `read_image` | ~1k tokens **per image** | UIA is empty or the state is visual |
 | 5 | **Coordinate click + verify** — `Invoke-VerifiedClick` | 0 tokens | no clickable element, only pixels |
 
+**A human at the keyboard changes the math.** Rung 5 stops being cheap: synthetic
+clicks land on whatever window has focus this second, typed keys go nowhere, and
+each retry costs 10–20 s. When somebody is actively using the machine, prefer
+rung 1 even if it looks harder. On 2026-10-18 a repository that would not get
+created through ~25 minutes of browser automation was created by one
+`POST /user/repos` call — because the token was already sitting in the git
+credential store. For any login or authorization screen, hunt for an existing
+credential (`git credential fill`, `gh auth status`, env vars) before touching
+the browser.
+
 Two different things get confused here:
 
 - **Screenshot for verification** is cheap: the image never enters the model.
