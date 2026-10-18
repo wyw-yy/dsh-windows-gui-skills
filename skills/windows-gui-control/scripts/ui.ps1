@@ -10,6 +10,8 @@ using System;
 using System.Runtime.InteropServices;
 public class Win32UI {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
+  public struct POINT { public int X; public int Y; }
   [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint dx,uint dy,uint d,UIntPtr e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);

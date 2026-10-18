@@ -1,4 +1,27 @@
-﻿## 0.1.4 - 2026-10-18
+﻿## 0.1.5 - 2026-10-18
+
+Self-review of 0.1.4, found and fixed six issues:
+
+- Get-ChangeMask used per-pixel GetPixel (2560x1600 took ~10 s). Rewritten as
+  PixelMask.Write with LockBits + Marshal.Copy: **136 ms** (73x).
+  (unsafe cannot be used: Add-Type compiles without /unsafe.)
+- Invoke-ClickTemplate returned two different shapes; on "not found" it had no
+  .Changed, so callers silently read $null. Now one shape, always with
+  Clicked/Found/Reason/Changed/Ratio/RawRatio.
+- Test-HoverPopup parked the pointer at (X-600, Y-600), which can land on
+  another widget and raise ITS tooltip -> wrong bbox. Now parks at (4,4) and
+  restores the original cursor position afterwards.
+- Save-ImageCrop had no bounds check (GDI threw a cryptic error); now throws
+  with the rect and the image size.
+- A checkbox tick changes too few pixels for the 24-px-cell cluster pass, so a
+  real click could report Changed=false. Added a raw-ratio fallback
+  (RawRatio >= 0.00005).
+- Win32UI had no GetCursorPos, which Test-HoverPopup needs. Added.
+
+Verified: mask 136 ms; template click on a live WinForms button ->
+ound/clicked/changed true and the app's own label went idle -> pong-211549;
+self-match on an identical screenshot scores 0 at the exact position.
+## 0.1.4 - 2026-10-18
 
 - NEW scripts/pixelscan.ps1 (auto-loaded by ui.ps1): pixel localization that
   survives window moves and mouse interference.
@@ -38,3 +61,4 @@
 宸茬煡闂锛?
 - 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
 - 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?
+

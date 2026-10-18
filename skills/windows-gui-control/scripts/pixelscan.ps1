@@ -200,34 +200,89 @@ function Get-ChangedRegion {
   return $res
 }
 
-# Show what changed between two captures: returns the cluster bbox plus the
-# diff mask image so you can look at it instead of guessing.
+# Show what changed between two captures: writes a black/white mask image.
 function Get-ChangeMask {
   param([string]$A, [string]$B, [int]$Threshold = 30, [string]$Path)
   if (-not $Path) { $Path = Join-Path $env:TEMP ('mask_' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.png') }
-  Add-Type -AssemblyName System.Drawing
-  $ia = [System.Drawing.Image]::FromFile($A); $ib = [System.Drawing.Image]::FromFile($B)
-  $w = $ia.Width; $h = $ia.Height
-  $bm = New-Object System.Drawing.Bitmap($w, $h)
-  $g = [System.Drawing.Graphics]::FromImage($bm)
-  $g.Clear([System.Drawing.Color]::Black)
-  for ($y = 0; $y -lt $h; $y += 2) {
-    for ($x = 0; $x -lt $w; $x += 2) {
-      $pa = $ia.GetPixel($x, $y); $pb = $ib.GetPixel($x, $y)
-      $d = [math]::Abs($pa.R - $pb.R) + [math]::Abs($pa.G - $pb.G) + [math]::Abs($pa.B - $pb.B)
-      if ($d -gt $Threshold) { $bm.SetPixel($x, $y, [System.Drawing.Color]::White) }
+  $r = [PixelMask]::Write($A, $B, $Threshold, $Path)
+  return $Path
+}
+
+
+# Fast whole-image mask writer. GetPixel over 4 MP takes ~10 s; Marshal.Copy ~30 ms.
+if (-not ('PixelMask' -as [type])) {
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+
+public class PixelMask {
+  static byte[] Grab(Bitmap src, out int stride, out int w, out int h) {
+    w = src.Width; h = src.Height;
+    var ra = new Rectangle(0, 0, w, h);
+    using (var b32 = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
+      using (var g = Graphics.FromImage(b32)) { g.DrawImage(src, ra); }
+      var d = b32.LockBits(ra, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+      try {
+        stride = d.Stride;
+        var buf = new byte[stride * h];
+        Marshal.Copy(d.Scan0, buf, 0, buf.Length);
+        return buf;
+      } finally { b32.UnlockBits(d); }
     }
   }
-  $g.Dispose(); $ia.Dispose(); $ib.Dispose()
-  $bm.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
-  $bm.Dispose()
-  return $Path
+
+  public static string Write(string pa, string pb, int th, string outp) {
+    using (var a = new Bitmap(pa)) using (var b = new Bitmap(pb)) {
+      if (a.Width != b.Width || a.Height != b.Height)
+        throw new Exception("size mismatch: " + a.Width + "x" + a.Height + " vs " + b.Width + "x" + b.Height);
+      int sa, sb, w, h;
+      var A = Grab(a, out sa, out w, out h);
+      var B = Grab(b, out sb, out w, out h);
+      var mask = new byte[w * h];
+      for (int y = 0; y < h; y++) {
+        int ra2 = y * sa, rb = y * sb;
+        for (int x = 0; x < w; x++) {
+          int i = ra2 + x * 4, j = rb + x * 4;
+          int d = Math.Abs(A[i] - B[j]) + Math.Abs(A[i+1] - B[j+1]) + Math.Abs(A[i+2] - B[j+2]);
+          mask[y * w + x] = (byte)(d > th ? 255 : 0);
+        }
+      }
+      using (var m = new Bitmap(w, h, PixelFormat.Format24bppRgb)) {
+        var ra = new Rectangle(0, 0, w, h);
+        var dm = m.LockBits(ra, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+        try {
+          int stride = dm.Stride;
+          var buf = new byte[stride * h];
+          for (int y = 0; y < h; y++) {
+            int row = y * stride;
+            for (int x = 0; x < w; x++) {
+              byte v = mask[y * w + x];
+              buf[row + x * 3] = v; buf[row + x * 3 + 1] = v; buf[row + x * 3 + 2] = v;
+            }
+          }
+          Marshal.Copy(buf, 0, dm.Scan0, buf.Length);
+        } finally { m.UnlockBits(dm); }
+        m.Save(outp, ImageFormat.Png);
+      }
+      return outp;
+    }
+  }
+}
+"@
 }
 
 # Crop a template out of a screenshot (used to build locators).
 function Save-ImageCrop {
   param([string]$Source, [int]$X, [int]$Y, [int]$Width, [int]$Height, [string]$Path)
   Add-Type -AssemblyName System.Drawing
+  $probe = [System.Drawing.Image]::FromFile($Source)
+  $iw = $probe.Width; $ih = $probe.Height; $probe.Dispose()
+  if ($Width -le 0 -or $Height -le 0) { throw "Save-ImageCrop: width/height must be > 0 (got ${Width}x${Height})" }
+  if ($X -lt 0 -or $Y -lt 0 -or ($X + $Width) -gt $iw -or ($Y + $Height) -gt $ih) {
+    throw "Save-ImageCrop: rect ($X,$Y) ${Width}x${Height} is outside the ${iw}x${ih} image"
+  }
   $src = [System.Drawing.Image]::FromFile($Source)
   try {
     $rect = New-Object System.Drawing.Rectangle($X, $Y, $Width, $Height)
@@ -289,14 +344,25 @@ function Invoke-ClickTemplate {
   $after = Join-Path $env:TEMP ('ct_after_' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.png')
   $null = Get-Screen -Path $before
   $hit = Find-ImageOnScreen -Template $Template -Tolerance $Tolerance -Shot $before
-  if (-not $hit.Found) { return [pscustomobject]@{ Clicked = $false; Found = $false; Score = $hit.Score } }
+  if (-not $hit.Found) {
+    # Keep ONE shape for every outcome: a caller that checks .Changed must not
+    # get $null just because the template was missing.
+    return [pscustomobject]@{
+      Clicked = $false; Found = $false; Reason = $hit.Reason; Score = $hit.Score
+      CenterX = 0; CenterY = 0; Changed = $false; Ratio = 0; RawRatio = 0; Diff = $null
+    }
+  }
   [Win32UI]::Click($hit.CenterX, $hit.CenterY)
   Start-Sleep -Milliseconds $WaitMs
   $null = Get-Screen -Path $after
   $d = Get-ChangedRegion -A $before -B $after -Threshold $Threshold
+  $raw = Get-ChangedRegion -A $before -B $after -Threshold $Threshold -Raw
+  # A checkbox tick changes far fewer than 24 pixels per cell, so the cluster
+  # pass can say NONE. Fall back to the raw ratio (>= 20 changed pixels).
+  $changed = ($d.Status -eq 'OK') -or ($raw.Status -eq 'OK' -and $raw.Ratio -ge 0.00005)
   return [pscustomobject]@{
     Clicked = $true; Found = $true; Score = $hit.Score; CenterX = $hit.CenterX; CenterY = $hit.CenterY
-    Changed = ($d.Status -eq 'OK'); Ratio = $d.Ratio; Diff = $d
+    Changed = $changed; Ratio = $d.Ratio; RawRatio = $raw.Ratio; Diff = $d
   }
 }
 
@@ -306,12 +372,16 @@ function Test-HoverPopup {
   param([int]$X, [int]$Y, [int]$AwayPx = 600, [int]$WaitMs = 700, [int]$Threshold = 25)
   $a = Join-Path $env:TEMP ('hover_on_' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.png')
   $b = Join-Path $env:TEMP ('hover_off_' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.png')
+  $orig = [Win32UI]::GetCursorPos()
   [Win32UI]::SetCursorPos($X, $Y)
   Start-Sleep -Milliseconds $WaitMs
   $null = Get-Screen -Path $a
-  [Win32UI]::SetCursorPos([math]::Max(0, $X - $AwayPx), [math]::Max(0, $Y - $AwayPx))
+  # Park in a corner instead of "X-600,Y-600": a diagonal move can land on
+  # another widget and raise ITS tooltip, which would pollute the diff.
+  [Win32UI]::SetCursorPos(4, 4)
   Start-Sleep -Milliseconds $WaitMs
   $null = Get-Screen -Path $b
+  [Win32UI]::SetCursorPos([int]$orig.X, [int]$orig.Y)
   $d = Get-ChangedRegion -A $a -B $b -Threshold $Threshold
   $d | Add-Member -NotePropertyName HoverOnPng -NotePropertyValue $a
   $d | Add-Member -NotePropertyName HoverOffPng -NotePropertyValue $b
