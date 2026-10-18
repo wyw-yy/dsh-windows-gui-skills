@@ -1,4 +1,4 @@
-# ui.ps1 - Windows GUI control for agents: screenshot, real mouse, UIA clicking.
+﻿# ui.ps1 - Windows GUI control for agents: screenshot, real mouse, UIA clicking.
 # Load with:
 #   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 #   . "C:\Users\yang'yu\.agents\skills\windows-gui-control\scripts\ui.ps1"
@@ -363,7 +363,7 @@ public class Win32Capture {
     RECT r; GetWindowRect(h, out r);
     int w = r.Right - r.Left, hh = r.Bottom - r.Top;
     if (IsIconic(h)) return "TOOSMALL " + w + "x" + hh + " iconic=True";
-    if (w < 40 || hh < 40) return "TOOSMALL " + w + "x" + hh + " iconic=False";
+    if (w < 8 || hh < 8) return "TOOSMALL " + w + "x" + hh + " iconic=False";
     using (Bitmap b = new Bitmap(w, hh, PixelFormat.Format32bppArgb))
     using (Graphics g = Graphics.FromImage(b)) {
       IntPtr dc = g.GetHdc();
@@ -566,4 +566,6 @@ try { Set-DpiAware } catch { }
 if ($PSScriptRoot) {
   $ps = Join-Path $PSScriptRoot 'pixelscan.ps1'
   if (Test-Path $ps) { . $ps }
+    $fo = Join-Path $PSScriptRoot 'flyouts.ps1'
+    if (Test-Path $fo) { . $fo }
 }

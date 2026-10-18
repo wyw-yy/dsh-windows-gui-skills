@@ -10,3 +10,6 @@ __pycache__/
 *.pyc
 
 REVIEW-NOTES*.md
+
+# per-machine learning data
+skills/windows-gui-control/data/

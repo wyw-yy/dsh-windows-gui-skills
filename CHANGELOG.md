@@ -1,4 +1,21 @@
-﻿## 0.1.6 - 2026-10-18
+﻿## 0.1.7 - 2026-10-18
+
+- NEW scripts/flyouts.ps1 (auto-loaded by ui.ps1): learned knowledge base for
+  transient UI, plus a correction rule.
+  - Get-TransientRegion: passive burst (no cursor move) - UI that appears and
+    leaves on its own inside the burst.
+  - Invoke-Flyout: fast path once confidence >= 2 (6 frames, stored trigger),
+    verification on every run, verdicts MATCH / MOVED / GONE / DIFFERENT_UI.
+  - Disagreement between attempts sets Unstable and is recorded in
+    disagreements[] instead of silently overwriting the entry.
+  - KB at %USERPROFILE%\.agents\skills\windows-gui-control\data\flyouts.json.
+- Capture-HoverFlyout rewritten: baseline is taken BEFORE hovering (frame 0 used
+  to already contain the flyout, so the diff said "nothing changed"); pixels are
+  compared only inside -Radius of the cursor; new top-level windows are captured
+  with PrintWindow and carry class + rect.
+- Get-WindowCapture no longer rejects small windows (a 147x32 tooltip is legit);
+  only iconic windows and < 8 px are refused.
+## 0.1.6 - 2026-10-18
 
 - NEW Capture-HoverFlyout: capture UI that only exists while the pointer hovers it
   (flyout, taskbar thumbnail, tooltip). Parks the cursor, bursts 16-18 frames at
@@ -69,5 +86,6 @@ self-match on an identical screenshot scores 0 at the exact position.
 宸茬煡闂锛?
 - 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
 - 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?
+
 
 

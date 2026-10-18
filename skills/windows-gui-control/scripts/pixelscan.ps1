@@ -389,30 +389,75 @@ function Test-HoverPopup {
 }
 
 # Hover UI (flyouts, thumbnails, tooltips) lives ~1 s and disappears when the
-# pointer leaves. You cannot beat it with a model round trip - you must capture
-# INSIDE its lifetime, from one process call:
-#   1. park the cursor on the target and DO NOT move it again
-#   2. burst-capture at ~70 ms for ~1.2 s
-#   3. also snapshot new top-level windows and PrintWindow them (works while fading)
-#   4. diff the frames to get the flyout bbox and keep the richest frame
+# pointer leaves, so it must be captured INSIDE its lifetime, from one process
+# call. Two independent detectors are used, because a full-screen diff is
+# dominated by whatever else animates on screen:
+#   A. local pixels - only a box of Radius around the cursor is compared
+#   B. new top-level windows that appeared during the burst (tooltip/flyout HWNDs)
+if (-not ('FlyWin' -as [type])) {
+Add-Type -TypeDefinition @"
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public class FlyWin {
+  public delegate bool CB(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(CB cb, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, StringBuilder s, int n);
+  public struct RECT { public int L, T, R, B; }
+  public static List<object[]> All() {
+    var list = new List<object[]>();
+    EnumWindows(delegate(IntPtr h, IntPtr l) {
+      if (!IsWindowVisible(h)) return true;
+      RECT r; GetWindowRect(h, out r);
+      int w = r.R - r.L, hh = r.B - r.T;
+      if (w < 8 || hh < 8) return true;
+      var cn = new StringBuilder(128); GetClassNameW(h, cn, 128);
+      var tt = new StringBuilder(160); GetWindowTextW(h, tt, 160);
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      list.Add(new object[] { h.ToInt64(), pid, cn.ToString(), tt.ToString(), r.L, r.T, w, hh });
+      return true;
+    }, IntPtr.Zero);
+    return list;
+  }
+}
+"@
+}
+
 function Capture-HoverFlyout {
   param(
     [int]$X, [int]$Y,
     [int]$Frames = 16, [int]$IntervalMs = 70,
-    [int]$Threshold = 30, [string]$Dir
+    [int]$Threshold = 30, [int]$Radius = 600, [string]$Dir
   )
   if (-not $Dir) { $Dir = Join-Path $env:TEMP ('flyout_' + [guid]::NewGuid().ToString('N').Substring(0, 6)) }
   New-Item -ItemType Directory -Path $Dir -Force | Out-Null
 
+  $si = Get-ScreenInfo
+  $rx = [math]::Max(0, $X - $Radius); $ry = [math]::Max(0, $Y - $Radius)
+  $rw = [math]::Min($si.ScreenW - $rx, $Radius * 2); $rh = [math]::Min($si.ScreenH - $ry, $Radius * 2)
+  if ($rw -lt 8 -or $rh -lt 8) { throw "Capture-HoverFlyout: hover point ($X,$Y) is outside the screen" }
+
   $before = @{}
-  foreach ($w in (Get-Process | Where-Object { $_.MainWindowHandle -ne 0 })) { $before[[int64]$w.MainWindowHandle] = $w.ProcessName }
+  foreach ($w in [FlyWin]::All()) { $before[[string]$w[0]] = $w }
+
+  # Baseline BEFORE hovering: frame 0 of a naive burst can already contain the
+  # flyout (it shows up in ~300 ms), which makes the diff report "nothing".
+  [Win32UI]::SetCursorPos(4, 4)
+  Start-Sleep -Milliseconds 250
+  $base = Join-Path $Dir 'base.png'
+  $null = Get-ScreenRegion -X $rx -Y $ry -Width $rw -Height $rh -Path $base
 
   [Win32UI]::SetCursorPos($X, $Y)
   $sw = [Diagnostics.Stopwatch]::StartNew()
   $files = @()
   for ($i = 0; $i -lt $Frames; $i++) {
     $f = Join-Path $Dir ('f{0:d2}.png' -f $i)
-    $null = Get-Screen -Path $f
+    $null = Get-ScreenRegion -X $rx -Y $ry -Width $rw -Height $rh -Path $f
     $files += $f
     $wait = $IntervalMs - [int]$sw.ElapsedMilliseconds
     if ($wait -gt 0) { Start-Sleep -Milliseconds $wait }
@@ -420,26 +465,31 @@ function Capture-HoverFlyout {
 
   $best = $files[0]; $bestDiff = 0.0
   for ($i = 1; $i -lt $files.Count; $i++) {
-    $r = Get-ChangedRegion -A $files[0] -B $files[$i] -Threshold $Threshold -Raw
+    $r = Get-ChangedRegion -A $base -B $files[$i] -Threshold $Threshold -Raw
     if ($r.Ratio -gt $bestDiff) { $bestDiff = $r.Ratio; $best = $files[$i] }
   }
-  $diff = Get-ChangedRegion -A $files[0] -B $best -Threshold $Threshold
+  $diff = Get-ChangedRegion -A $base -B $best -Threshold $Threshold
 
   $newWins = @()
-  $after = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 }
-  foreach ($w in $after) {
-    if (-not $before.ContainsKey([int64]$w.MainWindowHandle)) {
-      $shot = Join-Path $Dir ('win_' + $w.ProcessName + '_' + $w.MainWindowHandle + '.png')
-      $cap = Get-WindowCapture -Window ([pscustomobject]@{ Hwnd = [int64]$w.MainWindowHandle }) -Path $shot -NoThrow
-      $newWins += [pscustomobject]@{ Pid = $w.Id; Process = $w.ProcessName; Hwnd = [int64]$w.MainWindowHandle; Capture = $cap.Status; Path = $shot }
+  foreach ($w in [FlyWin]::All()) {
+    if (-not $before.ContainsKey([string]$w[0])) {
+      $shot = Join-Path $Dir ('win_' + $w[2] + '_' + $w[0] + '.png')
+      $cap = Get-WindowCapture -Window ([pscustomobject]@{ Hwnd = [int64]$w[0] }) -Path $shot -NoThrow
+      $newWins += [pscustomobject]@{
+        Hwnd = [int64]$w[0]; Pid = [int]$w[1]; Class = [string]$w[2]; Title = [string]$w[3]
+        Left = [int]$w[4]; Top = [int]$w[5]; Width = [int]$w[6]; Height = [int]$w[7]
+        Capture = $cap.Status; Path = $shot
+      }
     }
   }
   [Win32UI]::SetCursorPos(4, 4)
 
   return [pscustomobject]@{
     Frames = $files.Count; Dir = $Dir; BestFrame = $best; BestRatio = [math]::Round($bestDiff, 5)
-    Status = $diff.Status; Left = $diff.Left; Top = $diff.Top; Width = $diff.Width; Height = $diff.Height
+    Status = $diff.Status
+    Left = $(if ($diff.Status -eq 'OK') { $diff.Left + $rx } else { 0 })
+    Top = $(if ($diff.Status -eq 'OK') { $diff.Top + $ry } else { 0 })
+    Width = $diff.Width; Height = $diff.Height
     NewWindows = $newWins
   }
 }
-

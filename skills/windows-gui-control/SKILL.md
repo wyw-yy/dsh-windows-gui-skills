@@ -434,3 +434,54 @@ Rules that make or break it:
 - Prefer a path that does not need the flyout at all: keyboard (Tab/arrow), the
   window's UIA tree while it is open, or a persistent panel instead of a hover panel.
 
+
+### Learned flyout knowledge + the correction rule
+
+Bursting every time is wasteful. The skill keeps a per-machine knowledge base at
+`%USERPROFILE%\.agents\skills\windows-gui-control\data\flyouts.json`:
+
+```json
+{ "version": 1, "entries": [ {
+  "key": "hovertest:btn",
+  "trigger": { "x": 570, "y": 474 },
+  "region": { "Left": 570, "Top": 500, "Width": 147, "Height": 32, "Class": "tooltips_class32", "Source": "window" },
+  "confidence": 4, "attempts": 6, "firstSeen": "...", "lastSeen": "...",
+  "lastVerdict": "MATCH", "observations": [ ... ], "disagreements": [ ... ] } ] }
+```
+
+Use it instead of a bare burst:
+
+```powershell
+$r = Invoke-Flyout -Name 'qq:searchPanel' -TriggerX 2218 -TriggerY 183 -Attempts 3
+$r.Verdicts; $r.Final; $r.Confidence; $r.Unstable; $r.Region
+```
+
+- **confidence >= 2** -> fast path: 6 frames instead of 12-18, and the stored
+  trigger is used when you pass no coordinates.
+- Every run still verifies, and classifies what happened:
+
+| verdict | meaning | effect |
+|---|---|---|
+| `MATCH` | IoU >= 0.6 with the stored region | confidence +1, region refreshed |
+| `MOVED` | same size band, different place | region/trigger updated, confidence kept |
+| `GONE` | nothing appeared for every attempt | confidence -1 |
+| `DIFFERENT_UI` | a window appeared but class/size differ | kept, entry flagged unstable |
+
+- **Correction rule (this is the point):** the function runs up to `-Attempts`
+  passes and only calls it `Agreed` when the passes agree. Any mix of
+  found/not-found or a class change sets `Unstable = $true` and appends the whole
+  verdict list to `disagreements[]` in the JSON. A single disagreement never
+  rewrites the entry - it takes repeated samples, which is what "check again
+  before believing it" means in practice.
+
+Why windows beat pixels here: a full-screen diff is dominated by blinking carets
+and animated text. Measured on a real tooltip: the pixel pass produced a 24x24
+false bbox while the window pass returned the tooltip itself
+(`tooltips_class32`, 147x32). Identity therefore comes from the new top-level
+window (class + rect, filtered to < 900x700 and near the trigger); pixels are the
+fallback only.
+
+Measured cycle (same machine, 2026-10-18): learn -> `MATCH` conf 2; window moved
+200,150 with the old trigger -> `GONE` conf 0; new trigger -> `MATCH` conf 1 with
+the region following to `770,650`; app closed -> `GONE` conf 0, stable.
+
