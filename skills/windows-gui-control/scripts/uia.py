@@ -46,11 +46,70 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 
+def make_dpi_aware():
+    """UIA hands out PHYSICAL pixels; GetSystemMetrics on a DPI-unaware process
+    returns scaled ones. Without this a 2560x1600 screen at 150% reports 1707
+    wide, so every window past x=1707 looks 'off-screen'."""
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+    except Exception:
+        pass
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
 def is_foreground(handle):
     try:
         return int(handle) == int(ctypes.windll.user32.GetForegroundWindow())
     except Exception:
         return False
+
+
+def is_minimized(handle):
+    try:
+        return bool(ctypes.windll.user32.IsIconic(int(handle)))
+    except Exception:
+        return False
+
+
+def rect_bogus(r):
+    """True when a rectangle cannot describe a clickable on-screen control:
+    collapsed to nothing (the classic signature of a minimized window, whose
+    rect degenerates to 158x26 at -32000) or entirely outside the virtual screen."""
+    try:
+        w = int(r.right) - int(r.left)
+        h = int(r.bottom) - int(r.top)
+        if w <= 4 or h <= 4:
+            return True
+        u = ctypes.windll.user32
+        vx, vy = u.GetSystemMetrics(76), u.GetSystemMetrics(77)
+        vw, vh = u.GetSystemMetrics(78), u.GetSystemMetrics(79)
+        if vw <= 0 or vh <= 0:
+            vw, vh = u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+        if int(r.right) <= vx or int(r.bottom) <= vy:
+            return True
+        if int(r.left) >= vx + vw or int(r.top) >= vy + vh:
+            return True
+        return False
+    except Exception:
+        return False
+
+
+def bogus_reason(handle, c=None):
+    """Return None if the target is sane, else a short human-readable reason."""
+    if is_minimized(handle):
+        return "window is minimized (IsIconic); its coordinates do not exist - call focus/SW_RESTORE first"
+    try:
+        r = c.rectangle() if c is not None else None
+        if r is not None and rect_bogus(r):
+            return "control rectangle is degenerate/off-screen (%d,%d)-(%d,%d); usually a minimized or hidden parent" % (
+                r.left, r.top, r.right, r.bottom)
+    except Exception:
+        pass
+    return None
 
 
 def iter_windows():
@@ -207,10 +266,12 @@ def cmd_tree(a):
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
-    try:
-        w.set_focus()
-    except Exception:
-        pass
+    # Do not steal focus by default: dumping a tree should be an observation.
+    if getattr(a, "focus", False):
+        try:
+            w.set_focus()
+        except Exception:
+            pass
     for c in w.descendants(depth=a.depth):
         try:
             d = depth_of(c)
@@ -240,7 +301,14 @@ def cmd_find(a):
     if c is None:
         print("CONTROL NOT FOUND", file=sys.stderr)
         return 2
-    print(json.dumps(describe(c), ensure_ascii=False))
+    info = describe(c)
+    reason = bogus_reason(w.handle, c)
+    if reason:
+        info["found"] = True
+        info["unusable"] = reason
+        print(json.dumps(info, ensure_ascii=False))
+        return 4
+    print(json.dumps(info, ensure_ascii=False))
     return 0
 
 
@@ -254,12 +322,23 @@ def cmd_click(a):
         print("CONTROL NOT FOUND", file=sys.stderr)
         return 2
 
+    reason = bogus_reason(w.handle, c)
+    if reason and not a.force:
+        print(json.dumps({
+            "clicked": False,
+            "refused": reason,
+            "hint": "restore the window first (`python uia.py focus`, or SW_RESTORE); --force overrides this guard",
+        }, ensure_ascii=False))
+        return 4
+
     if a.input:
-        if not is_foreground(w.handle) and not a.force:
+        fg_before = is_foreground(w.handle)
+        if not fg_before and not a.force:
             print(json.dumps({
                 "clicked": False,
                 "refused": "target window is not foreground; a physical click would land on whatever is on top",
                 "hint": "call `python uia.py focus`, re-check occlusion, or pass --force knowingly",
+                "foreground_before": False,
             }, ensure_ascii=False))
             return 3
         try:
@@ -267,7 +346,9 @@ def cmd_click(a):
         except Exception:
             pass
         c.click_input()
-        print(json.dumps({"clicked": True, "method": "click_input", "foreground": is_foreground(w.handle)},
+        print(json.dumps({"clicked": True, "method": "click_input",
+                          "foreground_before": fg_before,
+                          "foreground_after": is_foreground(w.handle)},
                          ensure_ascii=False))
         return 0
 
@@ -326,6 +407,7 @@ def cmd_focus(a):
 
 
 def main():
+    make_dpi_aware()
     p = argparse.ArgumentParser(description="pywinauto bridge (uia backend)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -341,6 +423,7 @@ def main():
 
     common(sub.add_parser("windows"))
     sp = sub.add_parser("tree"); common(sp); sp.add_argument("--depth", type=int, default=4)
+    sp.add_argument("--focus", action="store_true", help="bring the window to the foreground first (observation should not steal focus)")
     sp = sub.add_parser("find"); common(sp); target(sp)
     sp = sub.add_parser("click"); common(sp); target(sp)
     sp.add_argument("--input", action="store_true", help="physical click instead of Invoke/Select/Toggle")

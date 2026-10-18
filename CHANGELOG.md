@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.3 — 2026-10-18
+
+第二轮审核（`REVIEW-NOTES-2.md`）逐条处理：
+
+- **`click --input` 字段改名**：输出由含糊的 `foreground` 改为 `foreground_before`
+  + `foreground_after`，既能表示"点之前就在前台"，也能表示"顺手抬起来了"。
+  拒绝分支同样带 `foreground_before: false`。
+- **`tree` 不再抢焦点**：观察类操作默认不调 `set_focus`，需要时显式加 `--focus`。
+  实测两窗口法验证：对非前台窗口跑 `tree`，`GetForegroundWindow()` 前后不变。
+- **最小化 / 坐标退化护栏**：新增 `is_minimized()`、`rect_bogus()`、`bogus_reason()`。
+  `find` 遇到最小化窗口不再返回 `(-47940,-47940)` 这类坐标，而是带
+  `"unusable"` 说明并退出 **4**；`click` 同样先过这道检查（`--force` 可越过）。
+- **DPI 一致性**：`main()` 启动即 `SetProcessDpiAwareness(2)`，避免 pywinauto 的
+  物理像素矩形与 `GetSystemMetrics` 的逻辑像素在 150% 缩放下互相矛盾。
+- 文档补：退出码 0/2/3/4 语义、`--focus` 用法、拒绝路径的可复现测法
+  （同一个测试窗口开两次，用 `--handle` 指向非前台的那个）。
+
 ## 0.1.2 — 2026-10-18
 
 外部审核（`REVIEW-NOTES-2026-10-18.md`）逐条修复：

@@ -166,15 +166,34 @@ returns those exact paths — do not assume a fixed filename, read `.WindowPng`.
 
 ```powershell
 python $env:USERPROFILE\.agents\skills\windows-gui-control\scripts\uia.py windows
-python ...\uia.py tree  --title "STM32CubeMX" --depth 4
+python ...\uia.py tree  --title "STM32CubeMX" --depth 4          # observation only
+python ...\uia.py tree  --title "..." --focus                    # opt in to focus
 python ...\uia.py find  --title "Notepad" --name "保存"
 python ...\uia.py click --title "Notepad" --auto-id 1234
 python ...\uia.py value --title "..." --auto-id 5678
 ```
 
-Exit codes: `0` ok, `2` window/control not found, `3` refused (see below),
-`1` unexpected error. It prints JSON for `find` (including the `patterns` the
-control actually supports and its `center`), so a caller can act without pixels.
+Exit codes: `0` ok, `2` window/control not found, `3` refused because the target
+is not foreground (physical click), `4` refused because the target is minimized
+or its rectangle is degenerate, `1` unexpected error. It prints JSON for `find`
+(including the `patterns` the control actually supports and its `center`), so a
+caller can act without pixels.
+
+`tree` does **not** call `set_focus` by default — dumping a control tree is an
+observation and used to yank the foreground away from whatever the user was
+doing. Pass `--focus` when you actually want it raised.
+
+`find` exits `4` instead of handing back nonsense coordinates:
+
+```json
+{"...": "...", "found": true,
+ "unusable": "window is minimized (IsIconic); its coordinates do not exist - call focus/SW_RESTORE first"}
+```
+
+A minimized window reports a rectangle around `(-47940,-47940)`; clicking that
+center sends the cursor into the void. The guard checks `IsIconic` first, then
+whether the rectangle is collapsed (≤4 px) or entirely outside the virtual
+screen, and `click` applies the same check before touching anything.
 
 `click` is **semantic first**: it tries Invoke → Select → Toggle and only falls
 back to a physical click when the element supports none of them. A physical
@@ -182,8 +201,16 @@ click is refused with exit code 3 unless the target window is foreground —
 otherwise the click lands on whatever is on top of it:
 
 ```json
-{"clicked": false, "refused": "target window is not foreground; ...", "hint": "call `python uia.py focus` ..."}
+{"clicked": false, "refused": "target window is not foreground; ...", "hint": "call `python uia.py focus` ...", "foreground_before": false}
 ```
+
+On success the JSON reports both `foreground_before` and `foreground_after`, so
+you can tell "clicked while already on top" from "raised it first".
+
+Reproducing the refusal without touching the user's screen: launch the same
+throw-away window **twice**; the second one is foreground, so target the first
+one by `--handle` (take it from `uia.py windows`, pick the handle that is not
+`GetForegroundWindow()`). That yields exit 3 deterministically.
 
 Pass `--force` only when you have checked the stacking yourself.
 `value --auto-id LBL` reads a Label's text; `value --name "OK"` matches the
