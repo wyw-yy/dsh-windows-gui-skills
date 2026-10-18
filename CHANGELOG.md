@@ -1,64 +1,40 @@
+﻿## 0.1.4 - 2026-10-18
+
+- NEW scripts/pixelscan.ps1 (auto-loaded by ui.ps1): pixel localization that
+  survives window moves and mouse interference.
+  - Get-ScreenBurst / Get-ChangedRegion / Get-ChangeMask: burst capture plus
+    cluster-aware diff (largest 8-connected cluster of changed 24px cells).
+  - Find-ImageOnScreen / Invoke-ClickTemplate / Save-ImageCrop: template match
+    (coarse step 4, then +-8 px refine) with a flat-template guard, plus verified click.
+  - Test-HoverPopup: diff "pointer on target" vs "pointer away" to find flyouts.
+- ui.ps1 now calls Set-DpiAware when dot-sourced, so Click(x,y) is physical
+  pixels on every display scale (previously only Get-ScreenInfo was aware).
 # Changelog
 
-## 0.1.3 — 2026-10-18
+## 0.1.3 鈥?2026-10-18
 
-第二轮审核（`REVIEW-NOTES-2.md`）逐条处理：
+绗簩杞鏍革紙`REVIEW-NOTES-2.md`锛夐€愭潯澶勭悊锛?
+- **`click --input` 瀛楁鏀瑰悕**锛氳緭鍑虹敱鍚硦鐨?`foreground` 鏀逛负 `foreground_before`
+  + `foreground_after`锛屾棦鑳借〃绀?鐐逛箣鍓嶅氨鍦ㄥ墠鍙?锛屼篃鑳借〃绀?椤烘墜鎶捣鏉ヤ簡"銆?  鎷掔粷鍒嗘敮鍚屾牱甯?`foreground_before: false`銆?- **`tree` 涓嶅啀鎶㈢劍鐐?*锛氳瀵熺被鎿嶄綔榛樿涓嶈皟 `set_focus`锛岄渶瑕佹椂鏄惧紡鍔?`--focus`銆?  瀹炴祴涓ょ獥鍙ｆ硶楠岃瘉锛氬闈炲墠鍙扮獥鍙ｈ窇 `tree`锛宍GetForegroundWindow()` 鍓嶅悗涓嶅彉銆?- **鏈€灏忓寲 / 鍧愭爣閫€鍖栨姢鏍?*锛氭柊澧?`is_minimized()`銆乣rect_bogus()`銆乣bogus_reason()`銆?  `find` 閬囧埌鏈€灏忓寲绐楀彛涓嶅啀杩斿洖 `(-47940,-47940)` 杩欑被鍧愭爣锛岃€屾槸甯?  `"unusable"` 璇存槑骞堕€€鍑?**4**锛沗click` 鍚屾牱鍏堣繃杩欓亾妫€鏌ワ紙`--force` 鍙秺杩囷級銆?- **DPI 涓€鑷存€?*锛歚main()` 鍚姩鍗?`SetProcessDpiAwareness(2)`锛岄伩鍏?pywinauto 鐨?  鐗╃悊鍍忕礌鐭╁舰涓?`GetSystemMetrics` 鐨勯€昏緫鍍忕礌鍦?150% 缂╂斁涓嬩簰鐩哥煕鐩俱€?- 鏂囨。琛ワ細閫€鍑虹爜 0/2/3/4 璇箟銆乣--focus` 鐢ㄦ硶銆佹嫆缁濊矾寰勭殑鍙鐜版祴娉?  锛堝悓涓€涓祴璇曠獥鍙ｅ紑涓ゆ锛岀敤 `--handle` 鎸囧悜闈炲墠鍙扮殑閭ｄ釜锛夈€?- **`jabswitch` 瀹炴祴缁撹**锛氬 STM32CubeMX 6.16.1 鏃犳晥鈥斺€擿-enable` 鎴愬姛銆?  JRE 閲?`javaaccessbridge.dll` / `windowsaccessbridge-64.dll` 閮藉湪銆佸簲鐢ㄩ噸鍚悗
+  UIA 鏍戜粛鍙湁 6 涓獥鍙ｈ楗拌妭鐐癸紙鏃?`GENERATE CODE`锛夈€備袱涓妧鑳介噷鐨勫缓璁兘鏀规垚
+  "璇曚竴娆″氨澶燂紝鍒啀璇曠浜屾"銆?
+## 0.1.2 鈥?2026-10-18
 
-- **`click --input` 字段改名**：输出由含糊的 `foreground` 改为 `foreground_before`
-  + `foreground_after`，既能表示"点之前就在前台"，也能表示"顺手抬起来了"。
-  拒绝分支同样带 `foreground_before: false`。
-- **`tree` 不再抢焦点**：观察类操作默认不调 `set_focus`，需要时显式加 `--focus`。
-  实测两窗口法验证：对非前台窗口跑 `tree`，`GetForegroundWindow()` 前后不变。
-- **最小化 / 坐标退化护栏**：新增 `is_minimized()`、`rect_bogus()`、`bogus_reason()`。
-  `find` 遇到最小化窗口不再返回 `(-47940,-47940)` 这类坐标，而是带
-  `"unusable"` 说明并退出 **4**；`click` 同样先过这道检查（`--force` 可越过）。
-- **DPI 一致性**：`main()` 启动即 `SetProcessDpiAwareness(2)`，避免 pywinauto 的
-  物理像素矩形与 `GetSystemMetrics` 的逻辑像素在 150% 缩放下互相矛盾。
-- 文档补：退出码 0/2/3/4 语义、`--focus` 用法、拒绝路径的可复现测法
-  （同一个测试窗口开两次，用 `--handle` 指向非前台的那个）。
-- **`jabswitch` 实测结论**：对 STM32CubeMX 6.16.1 无效——`-enable` 成功、
-  JRE 里 `javaaccessbridge.dll` / `windowsaccessbridge-64.dll` 都在、应用重启后
-  UIA 树仍只有 6 个窗口装饰节点（无 `GENERATE CODE`）。两个技能里的建议都改成
-  "试一次就够，别再试第二次"。
+澶栭儴瀹℃牳锛坄REVIEW-NOTES-2026-10-18.md`锛夐€愭潯淇锛?
+- **P0 `uia.py` 宕╂簝**锛歚control_of()` 涓嶅啀瀵?`UIAWrapper` 璋?`child_window()`
+  锛堟鍓?`find`/`click` 蹇呮姏 `'UIAWrapper' object has no attribute 'child_window'`锛夛紝
+  鏀逛负鎸夌鍏堥亶鍘嗗尮閰嶏紝`tree` 鐨勭缉杩涙寜鐪熷疄娣卞害杈撳嚭銆?- **P1 鐗╃悊鐐瑰嚮浼氱偣鍒板埆鐨勭獥鍙?*锛歚uia.py click --input` 鍦ㄧ洰鏍囩獥鍙ｄ笉鏄墠鍙版椂鎷掔粷锛?  閫€鍑虹爜 3 骞剁粰鍑烘彁绀猴紱纭灞傚彔鍏崇郴鍚庢墠鍙?`--force`銆?- **P1 鏂囨。鍐欓敊 HAL 琛屼负**锛歚stm32f4-bringup` 鐨?3b 鑺傜籂姝ｄ负鈥淗AL 涓嶆牎楠?PLL 棰戠巼鈥濓紝
+  `HAL_RCC_OscConfig` 鍦ㄧ瓑 `PLLRDY` 瓒呮椂鍚庤繑鍥?`HAL_TIMEOUT`
+  锛坄stm32f4xx_hal_rcc.c:487`锛屼笉鏄?`HAL_ERROR`锛夛紝骞惰ˉ涓?`.ioc` 閲?  `HCLK=168000000` 鐨勮法鍨嬪彿闄烽槺銆?- **P2 瀹氫綅 API**锛歚Get-Window -Like` 鐪熸寜閫氶厤绗﹁浆涔夛紙`-Regex` 鎵嶅綋姝ｅ垯锛夈€佹柊澧?  `Get-Window -Hwnd` 涓?`-Pattern` / `-Title` 鍒悕锛沗Assert-Window` 鎺ュ彈 HWND銆?  IntPtr 鍜?`Get-WindowList` 鐨勮锛岄敊璇俊鎭篃璇存槑璇ヤ紶浠€涔堛€?- **P2 鎴浘濂戠害**锛歚Get-WindowCapture` 瀵规渶灏忓寲绐楀彛鐩存帴鎶涢敊锛坄-NoThrow` 鎵嶈繑鍥炵姸鎬侊級锛?  榛樿鏂囦欢鍚嶅甫 HWND锛沗Test-Occluded` 鐢ㄩ殢鏈烘枃浠跺悕骞惰繑鍥炵湡瀹?`WindowPng/ScreenPng`銆?- **P2 纭鍒?*锛氳ˉ UAC 鎻愭潈绐楀彛涓嶅彲鎺э紙UIPI锛夈€佹埅鍥炬秹鍙婇殣绉併€佽剼鏈唴淇濇寔 ASCII銆?- **鎻忚堪鍘婚噸**锛歚windows-gui-control` 鏀逛负鈥滃嚱鏁板弬鑰冣€濓紝鍏ュ彛鍒ゆ柇褰?  `windows-screen-automation`锛岄伩鍏嶅洓涓妧鑳界殑瑙﹀彂鎻忚堪浜掔浉閲嶅彔銆?
+## 0.1.0 鈥?2026-10-18
 
-## 0.1.2 — 2026-10-18
+棣栦釜鐗堟湰銆傛妸鍥涗釜鍦ㄧ湡瀹炰换鍔￠噷楠岃瘉杩囩殑鎶€鑳芥墦鍖呮垚 DSH 鎻掍欢銆?
+- `windows-gui-control`锛歚ui.ps1`锛?9 KB锛?5 涓嚱鏁帮級+ `uia.py`锛坧ywinauto 妗ワ級
+- `windows-screen-automation`锛氱湅鈫掔偣鈫掗獙闂幆銆乣Get-WindowCapture` 閬尅鎴浘銆佸儚绱犲樊闃堝€?- `windows-uia-inspector`锛歎IA 鏍?dump銆佸畾浣嶄紭鍏堢骇銆丣ava/SWT 绌烘爲鐨勫缃?- `windows-input-bridge`锛氬壀璐存澘鎵撳瓧銆佺粍鍚堥敭銆佺劍鐐?鏃跺簭銆佹帶鍒跺彴绐楀彛鐨勭壒娈婃儏鍐?
+宸查獙璇佺殑鍦烘櫙锛?
+- STM32CubeMX锛圝ava/SWT锛屾棤鎺т欢鏍戯級锛氱偣 `GENERATE CODE`銆佺偣鏃堕挓姹傝В鍣ㄥ璇濇
+- Keil uVision锛歚UV4.exe -b/-f` 涔嬪鐨勫浘褰㈡搷浣?- 璁颁簨鏈?/ 璧勬簮绠＄悊鍣?/ cmd锛氱湡瀹為紶鏍囩偣鍑?+ 鍓创鏉挎墦瀛?+ 绐楀彛鎴浘鍥炴墽
 
-外部审核（`REVIEW-NOTES-2026-10-18.md`）逐条修复：
-
-- **P0 `uia.py` 崩溃**：`control_of()` 不再对 `UIAWrapper` 调 `child_window()`
-  （此前 `find`/`click` 必抛 `'UIAWrapper' object has no attribute 'child_window'`），
-  改为按祖先遍历匹配，`tree` 的缩进按真实深度输出。
-- **P1 物理点击会点到别的窗口**：`uia.py click --input` 在目标窗口不是前台时拒绝，
-  退出码 3 并给出提示；确认层叠关系后才可 `--force`。
-- **P1 文档写错 HAL 行为**：`stm32f4-bringup` 的 3b 节纠正为“HAL 不校验 PLL 频率”，
-  `HAL_RCC_OscConfig` 在等 `PLLRDY` 超时后返回 `HAL_TIMEOUT`
-  （`stm32f4xx_hal_rcc.c:487`，不是 `HAL_ERROR`），并补上 `.ioc` 里
-  `HCLK=168000000` 的跨型号陷阱。
-- **P2 定位 API**：`Get-Window -Like` 真按通配符转义（`-Regex` 才当正则）、新增
-  `Get-Window -Hwnd` 与 `-Pattern` / `-Title` 别名；`Assert-Window` 接受 HWND、
-  IntPtr 和 `Get-WindowList` 的行，错误信息也说明该传什么。
-- **P2 截图契约**：`Get-WindowCapture` 对最小化窗口直接抛错（`-NoThrow` 才返回状态），
-  默认文件名带 HWND；`Test-Occluded` 用随机文件名并返回真实 `WindowPng/ScreenPng`。
-- **P2 硬规则**：补 UAC 提权窗口不可控（UIPI）、截图涉及隐私、脚本内保持 ASCII。
-- **描述去重**：`windows-gui-control` 改为“函数参考”，入口判断归
-  `windows-screen-automation`，避免四个技能的触发描述互相重叠。
-
-## 0.1.0 — 2026-10-18
-
-首个版本。把四个在真实任务里验证过的技能打包成 DSH 插件。
-
-- `windows-gui-control`：`ui.ps1`（19 KB，25 个函数）+ `uia.py`（pywinauto 桥）
-- `windows-screen-automation`：看→点→验闭环、`Get-WindowCapture` 遮挡截图、像素差阈值
-- `windows-uia-inspector`：UIA 树 dump、定位优先级、Java/SWT 空树的处置
-- `windows-input-bridge`：剪贴板打字、组合键、焦点/时序、控制台窗口的特殊情况
-
-已验证的场景：
-
-- STM32CubeMX（Java/SWT，无控件树）：点 `GENERATE CODE`、点时钟求解器对话框
-- Keil uVision：`UV4.exe -b/-f` 之外的图形操作
-- 记事本 / 资源管理器 / cmd：真实鼠标点击 + 剪贴板打字 + 窗口截图回执
-
-已知问题：
-
-- 最小化窗口无法截图（矩形退化为 158×26）；
-- 启动器进程 PID ≠ 窗口 PID（Win11 打包应用会复用实例），`Get-WindowByPid` 可能返回 `$null`，脚本已加 `Assert-Window` 明确报错。
+宸茬煡闂锛?
+- 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
+- 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?

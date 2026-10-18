@@ -337,3 +337,65 @@ Close-Dialogs -Names 'OK','Yes','Continue','确定','是'
   rung 4 after bringing the window forward.
 - PowerShell 5.1 reads `.ps1` files as ANSI: keep `ui.ps1` **ASCII-only**.
   Passing CJK button names as arguments is fine; hard-coding them is not.
+
+## Locating things when coordinates are not enough
+
+Fixed screen coordinates break the moment a window moves, the DPI changes, or
+the user drags the mouse. Use pixels instead of remembered numbers.
+
+### Template match: find a widget by what it looks like
+
+```powershell
+# 1) crop the widget once (from any screenshot that shows it)
+$tpl = Save-ImageCrop -Source $shot -X $rect[0] -Y $rect[1] -Width $w -Height $h -Path "$env:TEMP\btn.png"
+# 2) find it again in a brand-new screenshot
+$hit = Find-ImageOnScreen -Template $tpl -Tolerance 10
+$hit.Found; $hit.CenterX; $hit.CenterY; $hit.Score
+# 3) click it and prove the screen changed
+$r = Invoke-ClickTemplate -Template $tpl -Tolerance 10
+$r.Changed; $r.Ratio
+```
+
+Measured 2026-10-18 (2560x1600 @150%): a 210x35 button crop was located with
+`score=0` **after the window had been moved by SetWindowPos**, the click landed,
+and the app's own label changed to `pong-211045`. That is the difference between
+"click at 450,398 and hope" and "click whatever currently looks like the button".
+
+Rules:
+
+- `Score <= 10` means "same widget"; `> 20` means you found a look-alike.
+- A nearly uniform crop returns `FLAT` and is rejected on purpose — a blank patch
+  scores 0 against any other blank patch.
+- Crop from the same DPI/scale you will search at. Cross-DPI matching works but
+  the score degrades; re-crop instead of lowering the tolerance.
+
+### Burst + diff: catch UI that only exists for a moment
+
+Hover flyouts, tooltips, submenus and "appears only while the mouse is near"
+panels vanish between two model turns. Capture a burst and diff it in-process:
+
+```powershell
+$b = Get-ScreenBurst -Count 6 -IntervalMs 120
+$d = Get-ChangedRegion -A $b.Files[0] -B $b.Files[5]   # cluster-aware bbox
+$d.Status; $d.Left; $d.Top; $d.Width; $d.Height; $d.Cells
+```
+
+The diff is cluster-aware: cells of 24x24 px need >=24 changed pixels, and only
+the **largest 8-connected cluster** is reported. Without that, a blinking clock in
+the corner stretched the bounding box across the whole screen (observed: bbox
+`(24,72)-(1343,1319)` for a 0.1% pixel change). With it, the same desktop produced
+`(816,1200)-(1419,1247)` — exactly the status text that was animating.
+
+Related helpers:
+
+| Function | Use |
+|---|---|
+| `Get-ScreenBurst -Count N -IntervalMs M` | N shots in one call; nothing can vanish in between |
+| `Get-ChangedRegion -A -B [-Raw]` | where two frames differ (cluster bbox + ratio) |
+| `Get-ChangeMask -A -B` | writes a black/white mask image, so you can *look* at the diff |
+| `Test-HoverPopup -X -Y` | hover, capture, move away, capture; bbox = the hover-only UI |
+| `Find-ImageOnScreen -Template` | locate a crop anywhere on screen |
+| `Invoke-ClickTemplate -Template` | locate + click + verify in one call |
+
+Cost: a burst is 5-6 captures of disk I/O and ~0 model tokens; only the frames you
+actually `read_image` cost context. Diff and match run in C# inside the script.

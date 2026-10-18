@@ -112,7 +112,12 @@ function Get-Window {
   # Wildcards by default: * and ? work, everything else is literal.
   param([Alias('Pattern', 'Title')][string]$Like, [switch]$Regex, [int64]$Hwnd = 0)
   if ($Hwnd -gt 0) {
-    try { return [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$Hwnd) } catch { return $null }
+    $el = $null
+    try { $el = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$Hwnd) } catch { $el = $null }
+    # Chromium/Electron windows: either no element at all, or one whose
+    # NativeWindowHandle reads 0. Keep the raw handle so geometry still works.
+    if ($el -and $el.Current.NativeWindowHandle -ne 0) { return $el }
+    return [pscustomobject]@{ Hwnd = $Hwnd }
   }
   if (-not $Like) { return $null }
   $pattern = $Like
@@ -186,14 +191,21 @@ function Assert-Window {
   if ($Window -is [int] -or $Window -is [int64] -or $Window -is [System.IntPtr]) {
     $h = [IntPtr][int64]$Window
     if ($h -eq [IntPtr]::Zero) { throw $Hint }
-    try { return [System.Windows.Automation.AutomationElement]::FromHandle($h) } catch { throw $Hint }
+    # A raw HWND always stays a raw HWND: for Chromium/Electron the UIA element
+    # either does not exist or reports NativeWindowHandle = 0.
+    return [pscustomobject]@{ Hwnd = [int64]$h }
   }
   # A row from Get-WindowList (pscustomobject with .Pid/.Name/.Handle) also works.
   if (-not $Window.PSObject.Properties['Current']) {
     $hh = $Window.PSObject.Properties['Handle']
     if ($hh -and [int64]$hh.Value -ne 0) {
-      try { return [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr][int64]$hh.Value) } catch { throw $Hint }
+      $el = $null
+      try { $el = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr][int64]$hh.Value) } catch { $el = $null }
+      if ($el) { return $el }
+      return [pscustomobject]@{ Hwnd = [int64]$hh.Value }
     }
+    $hw = $Window.PSObject.Properties['Hwnd']
+    if ($hw -and [int64]$hw.Value -ne 0) { return [pscustomobject]@{ Hwnd = [int64]$hw.Value } }
     throw $Hint
   }
   try { $h = $Window.Current.NativeWindowHandle } catch { throw $Hint }
@@ -201,10 +213,17 @@ function Assert-Window {
   return $Window
 }
 
+function Get-Handle {
+  param($Window)
+  $w = Assert-Window $Window
+  if ($w.PSObject.Properties['Hwnd'] -and -not $w.PSObject.Properties['Current']) { return [IntPtr][int64]$w.Hwnd }
+  return [IntPtr]$w.Current.NativeWindowHandle
+}
+
 function Get-WindowRect {
   param($Window)
   $Window = Assert-Window $Window
-  $h = [IntPtr]$Window.Current.NativeWindowHandle
+  $h = Get-Handle $Window
   $r = New-Object Win32UI+RECT
   [Win32UI]::GetWindowRect($h, [ref]$r) | Out-Null
   return $r
@@ -213,7 +232,7 @@ function Get-WindowRect {
 function Focus-Window {
   param($Window)
   $Window = Assert-Window $Window
-  $h = [IntPtr]$Window.Current.NativeWindowHandle
+  $h = Get-Handle $Window
   [Win32UI]::ShowWindow($h, 9) | Out-Null
   [Win32UI]::SetForegroundWindow($h) | Out-Null
   Start-Sleep -Milliseconds 400
@@ -394,7 +413,7 @@ function Get-ScreenRegion {
 function Get-WindowCapture {
   param($Window, [string]$Path = '', [switch]$NoThrow)
   $Window = Assert-Window $Window
-  $h = [IntPtr]$Window.Current.NativeWindowHandle
+  $h = Get-Handle $Window
   if (-not $Path) { $Path = "$env:TEMP\win_$([int64]$h)_capture.png" }
   $rc = [Win32Capture]::Rect($h).Split(' ')
   $res = [Win32Capture]::Grab($h, $Path, 2)
@@ -534,4 +553,15 @@ function Invoke-ClickByNameVerified {
   $rc = $el.Current.BoundingRectangle
   $r = Invoke-VerifiedClick -Window $Window -X ([int]($rc.X + $rc.Width / 2)) -Y ([int]($rc.Y + $rc.Height / 2))
   return [pscustomobject]@{ Found = $true; Changed = $r.Changed; Diff = $r.Diff }
+}
+
+# --- Make this shell process DPI-aware as soon as the file is dot-sourced. ---
+# Without it, at 150% scale the screen reports 1707x1067 but captures are
+# 2560x1600, so every Click(x,y) lands at (x*1.5, y*1.5).
+try { Set-DpiAware } catch { }
+
+# Load the pixel-localization helpers living next to this file.
+if ($PSScriptRoot) {
+  $ps = Join-Path $PSScriptRoot 'pixelscan.ps1'
+  if (Test-Path $ps) { . $ps }
 }
