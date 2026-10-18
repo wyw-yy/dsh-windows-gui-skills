@@ -1,0 +1,17 @@
+# Opt-in, skills-only DeepSeek Harness bundle.
+#
+# Mounts a filesystem Skill provider whose root is the `skills/` directory of
+# THIS installed npm package. The path is resolved from the package's own npm
+# identity anchored at the DSH profile (Loader baseUrl) — never by concatenating
+# a path onto baseUrl — so it keeps working when the profile directory moves.
+#
+# This patch registers no native tools, no Web client, no telemetry, no network
+# client, no background service and no install hooks. It only tells the Skill
+# loader where to read SKILL.md files from.
+- insert:
+    - id: windows-gui-skills-filesystem
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: windows-gui-skills-plugin
+        includeDefaultRoots: false
+        bundledSkillDir: !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-windows-gui-skills/package.json')), 'skills')
