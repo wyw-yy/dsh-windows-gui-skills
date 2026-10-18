@@ -1,6 +1,6 @@
 # dsh-windows-gui-skills
 
-**在 DeepSeek Harness 里操作 Windows 图形界面**的四个 Agent Skill：截图（含被遮挡的窗口）、真实鼠标点击（带像素级回执）、走剪贴板打字（中文输入法不会吃字）、以及 UI Automation 语义定位。
+**在 DeepSeek Harness 里操作 Windows 图形界面**的五个 Agent Skill：截图（含被遮挡的窗口）、真实鼠标点击（带像素级回执）、走剪贴板打字（中文输入法不会吃字）、UI Automation 语义定位，以及 STM32F4 的编译/烧录与「烧进去不亮」排查。
 
 纯 PowerShell + 系统自带 .NET，**零依赖、零后台服务、零网络请求**。装完之后对 agent 说一句「截个图看看」或「点一下 GENERATE CODE」就能用。
 
@@ -41,7 +41,7 @@ npm pack                                  # 得到 dsh-windows-gui-skills-0.1.0.
 dsh plugin --profile <profile> add /abs/path/dsh-windows-gui-skills-0.1.0.tgz
 ```
 
-不想装插件也可以只用技能：把 `skills/` 下四个目录拷进 `%USERPROFILE%\.agents\skills\`，效果一样（DSH 会从用户级技能目录加载）。
+不想装插件也可以只用技能：把 `skills/` 下五个目录拷进 `%USERPROFILE%\.agents\skills\`，效果一样（DSH 会从用户级技能目录加载）。
 
 ### 一条命令装技能（不需要 npm）
 
@@ -60,14 +60,15 @@ $t="$env:TEMP\wgsk"; iwr https://github.com/wyw-yy/dsh-windows-gui-skills/archiv
 装完开新会话即可。注意 `dsh plugin add github:...` **不行**——DSH 的插件安装走 pnpm/npm 源，不认 git 源（实测装完不登记 bundle、也没有 skills 目录）。
 
 
-## 四个技能
+## 五个技能
 
 | 技能 | 管什么 | 典型触发 |
 |---|---|---|
-| `windows-gui-control` | 总入口：25 个函数、决策阶梯、硬规则、配方 | 「帮我点一下这个按钮」 |
+| `windows-gui-control` | 总入口：27 个函数、决策阶梯、硬规则、配方 | 「帮我点一下这个按钮」 |
 | `windows-screen-automation` | 看→判断→点→验证闭环；全屏/单窗口截图；像素差校验；失败重试 | 「截图看看现在什么状态」 |
 | `windows-uia-inspector` | UIA 控件树、按 Name/AutomationId 定位、语义点击、空树排查 | 「找到叫 OK 的按钮并点它」 |
 | `windows-input-bridge` | 剪贴板打字（治中文输入法）、组合键、鼠标三键、焦点与时序 | 「在这个输入框里填 336」 |
+| `stm32f4-bringup` | Keil 命令行编译/烧录、烧进去不亮的排查顺序、PLL 合法性算术、见证成功的四个条件 | 「烧录成功了但灯不亮」 |
 
 每个技能都带 `SKILL.md`；`windows-gui-control` 还带两个可直接调用的脚本：
 

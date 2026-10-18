@@ -1,4 +1,4 @@
-# Install the four Windows GUI skills into the user-level skill folder.
+﻿# Install the bundled Agent Skills into the user-level skill folder.
 # No npm, no DSH plugin: just files in %USERPROFILE%\.agents\skills\.
 #
 #   powershell -ExecutionPolicy Bypass -File install.ps1

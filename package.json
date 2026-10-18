@@ -1,7 +1,7 @@
 {
   "name": "dsh-windows-gui-skills",
   "version": "0.1.0",
-  "description": "Drive Windows GUI apps from DeepSeek Harness: full-screen and single-window screenshots (even when covered), real mouse clicks with pixel-verified feedback, clipboard typing that survives a Chinese IME, and UI Automation lookups — packaged as four Agent Skills.",
+  "description": "Drive Windows GUI apps from DeepSeek Harness: full-screen and single-window screenshots (even when covered), real mouse clicks with pixel-verified feedback, clipboard typing that survives a Chinese IME, UI Automation lookups, and an STM32F4 build/flash bring-up checklist — packaged as five Agent Skills.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
