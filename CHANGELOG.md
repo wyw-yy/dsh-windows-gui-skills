@@ -14,7 +14,8 @@
   （`stm32f4xx_hal_rcc.c:487`，不是 `HAL_ERROR`），并补上 `.ioc` 里
   `HCLK=168000000` 的跨型号陷阱。
 - **P2 定位 API**：`Get-Window -Like` 真按通配符转义（`-Regex` 才当正则）、新增
-  `Get-Window -Hwnd`；`Assert-Window` 接受 HWND、IntPtr 和 `Get-WindowList` 的行。
+  `Get-Window -Hwnd` 与 `-Pattern` / `-Title` 别名；`Assert-Window` 接受 HWND、
+  IntPtr 和 `Get-WindowList` 的行，错误信息也说明该传什么。
 - **P2 截图契约**：`Get-WindowCapture` 对最小化窗口直接抛错（`-NoThrow` 才返回状态），
   默认文件名带 HWND；`Test-Occluded` 用随机文件名并返回真实 `WindowPng/ScreenPng`。
 - **P2 硬规则**：补 UAC 提权窗口不可控（UIPI）、截图涉及隐私、脚本内保持 ASCII。

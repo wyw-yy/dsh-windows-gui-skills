@@ -107,9 +107,10 @@ function Get-WindowList {
 }
 
 function Get-Window {
+  # The pattern always goes to -Like (aliases: -Pattern, -Title); -Regex only
+  # switches how it is interpreted, it does not take a value of its own.
   # Wildcards by default: * and ? work, everything else is literal.
-  # Pass -Regex for a raw regular expression.
-  param([string]$Like, [switch]$Regex, [int64]$Hwnd = 0)
+  param([Alias('Pattern', 'Title')][string]$Like, [switch]$Regex, [int64]$Hwnd = 0)
   if ($Hwnd -gt 0) {
     try { return [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$Hwnd) } catch { return $null }
   }

@@ -1,13 +1,14 @@
 ---
 name: windows-screen-automation
 description: >
-  The look-then-act loop for Windows GUIs: take a screenshot, decide, click, and
-  prove the click changed something. Covers full-screen and single-window
-  capture (including windows covered by other windows), coords vs preview scaling,
-  pixel-diff verification, retry policy, and the failure modes that silently make
-  an automation click the wrong thing. Use when you must operate an app that
-  exposes no controls, when a click seems to do nothing, when you need to know
-  whether a window is occluded, or when deciding if a screenshot is worth
+  Start here for "automate this window": the look-then-act loop for Windows GUIs —
+  take a screenshot, decide, click, and prove the click changed something. Covers
+  full-screen and single-window capture (including windows covered by other
+  windows), coords vs preview scaling, pixel-diff verification, retry policy, and
+  the failure modes that silently make an automation click the wrong thing. Use
+  when asked to 帮我点一下 / 截图看看 / 自动化这个界面 / click through an app, when
+  the target exposes no controls, when a click seems to do nothing, when you need
+  to know whether a window is occluded, or when deciding if a screenshot is worth
   sending to the model.
 ---
 
