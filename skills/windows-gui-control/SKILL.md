@@ -399,3 +399,38 @@ Related helpers:
 
 Cost: a burst is 5-6 captures of disk I/O and ~0 model tokens; only the frames you
 actually `read_image` cost context. Diff and match run in C# inside the script.
+
+### Hover-only UI that lives ~1 s (flyouts, thumbnails, tooltips)
+
+A model round trip is 5-15 s; the flyout is gone in ~1 s. You cannot "click, look,
+then click again". Capture **inside** its lifetime, from one process call:
+
+```powershell
+$r = Capture-HoverFlyout -X 570 -Y 474 -Frames 18 -IntervalMs 60
+$r.BestRatio; $r.Status; $r.Left; $r.Top; $r.Width; $r.Height; $r.BestFrame
+```
+
+What it does, in this order, without returning to the model:
+
+1. parks the cursor on the target and never moves it again (leaving = instant dismiss);
+2. burst-captures 16-18 frames at 60-70 ms, i.e. while the flyout still exists;
+3. diffs every frame against frame 0, keeps the richest frame, and reports the
+   changed bbox (cluster pass, so a blinking clock does not swallow the screen);
+4. snapshots top-level windows that appeared during the burst and PrintWindow-captures
+   them - a fading tooltip still renders into its own HWND after it leaves the screen;
+5. parks the cursor at (4,4) so the pointer is not left hovering a live control.
+
+Measured 2026-10-18: hovering a WinForms button captured the tooltip text
+`FORM-MARKER` at bbox `552,480 168x72` - a window that exists only while the pointer
+is on the button. Same call, no extra tokens.
+
+Rules that make or break it:
+
+- **Verify the hover target first** (UIA rect or `Find-ImageOnScreen`). If the pointer
+  lands 3 px off, you get no flyout and the diff reports whatever else moves on
+  screen (measured: a spinner 300 px away became the bbox).
+- If you must *act* on the flyout, do the click in the same call, right after the
+  burst - not in the next turn.
+- Prefer a path that does not need the flyout at all: keyboard (Tab/arrow), the
+  window's UIA tree while it is open, or a persistent panel instead of a hover panel.
+

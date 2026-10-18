@@ -387,3 +387,59 @@ function Test-HoverPopup {
   $d | Add-Member -NotePropertyName HoverOffPng -NotePropertyValue $b
   return $d
 }
+
+# Hover UI (flyouts, thumbnails, tooltips) lives ~1 s and disappears when the
+# pointer leaves. You cannot beat it with a model round trip - you must capture
+# INSIDE its lifetime, from one process call:
+#   1. park the cursor on the target and DO NOT move it again
+#   2. burst-capture at ~70 ms for ~1.2 s
+#   3. also snapshot new top-level windows and PrintWindow them (works while fading)
+#   4. diff the frames to get the flyout bbox and keep the richest frame
+function Capture-HoverFlyout {
+  param(
+    [int]$X, [int]$Y,
+    [int]$Frames = 16, [int]$IntervalMs = 70,
+    [int]$Threshold = 30, [string]$Dir
+  )
+  if (-not $Dir) { $Dir = Join-Path $env:TEMP ('flyout_' + [guid]::NewGuid().ToString('N').Substring(0, 6)) }
+  New-Item -ItemType Directory -Path $Dir -Force | Out-Null
+
+  $before = @{}
+  foreach ($w in (Get-Process | Where-Object { $_.MainWindowHandle -ne 0 })) { $before[[int64]$w.MainWindowHandle] = $w.ProcessName }
+
+  [Win32UI]::SetCursorPos($X, $Y)
+  $sw = [Diagnostics.Stopwatch]::StartNew()
+  $files = @()
+  for ($i = 0; $i -lt $Frames; $i++) {
+    $f = Join-Path $Dir ('f{0:d2}.png' -f $i)
+    $null = Get-Screen -Path $f
+    $files += $f
+    $wait = $IntervalMs - [int]$sw.ElapsedMilliseconds
+    if ($wait -gt 0) { Start-Sleep -Milliseconds $wait }
+  }
+
+  $best = $files[0]; $bestDiff = 0.0
+  for ($i = 1; $i -lt $files.Count; $i++) {
+    $r = Get-ChangedRegion -A $files[0] -B $files[$i] -Threshold $Threshold -Raw
+    if ($r.Ratio -gt $bestDiff) { $bestDiff = $r.Ratio; $best = $files[$i] }
+  }
+  $diff = Get-ChangedRegion -A $files[0] -B $best -Threshold $Threshold
+
+  $newWins = @()
+  $after = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 }
+  foreach ($w in $after) {
+    if (-not $before.ContainsKey([int64]$w.MainWindowHandle)) {
+      $shot = Join-Path $Dir ('win_' + $w.ProcessName + '_' + $w.MainWindowHandle + '.png')
+      $cap = Get-WindowCapture -Window ([pscustomobject]@{ Hwnd = [int64]$w.MainWindowHandle }) -Path $shot -NoThrow
+      $newWins += [pscustomobject]@{ Pid = $w.Id; Process = $w.ProcessName; Hwnd = [int64]$w.MainWindowHandle; Capture = $cap.Status; Path = $shot }
+    }
+  }
+  [Win32UI]::SetCursorPos(4, 4)
+
+  return [pscustomobject]@{
+    Frames = $files.Count; Dir = $Dir; BestFrame = $best; BestRatio = [math]::Round($bestDiff, 5)
+    Status = $diff.Status; Left = $diff.Left; Top = $diff.Top; Width = $diff.Width; Height = $diff.Height
+    NewWindows = $newWins
+  }
+}
+
