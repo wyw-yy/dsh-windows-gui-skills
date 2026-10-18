@@ -43,6 +43,23 @@ dsh plugin --profile <profile> add /abs/path/dsh-windows-gui-skills-0.1.0.tgz
 
 不想装插件也可以只用技能：把 `skills/` 下四个目录拷进 `%USERPROFILE%\.agents\skills\`，效果一样（DSH 会从用户级技能目录加载）。
 
+### 一条命令装技能（不需要 npm）
+
+插件要等 npm 发包；只想立刻用上技能的话，仓库里带了一个安装脚本，直接从 GitHub 拉取并铺进用户级技能目录：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+或者不下载脚本，一行搞定：
+
+```powershell
+$t="$env:TEMP\wgsk"; iwr https://github.com/wyw-yy/dsh-windows-gui-skills/archive/refs/heads/main.zip -OutFile "$t.zip"; Expand-Archive "$t.zip" $t -Force; Copy-Item "$t\dsh-windows-gui-skills-main\skills\*" "$env:USERPROFILE\.agents\skills\" -Recurse -Force
+```
+
+装完开新会话即可。注意 `dsh plugin add github:...` **不行**——DSH 的插件安装走 pnpm/npm 源，不认 git 源（实测装完不登记 bundle、也没有 skills 目录）。
+
+
 ## 四个技能
 
 | 技能 | 管什么 | 典型触发 |
