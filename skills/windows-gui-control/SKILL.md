@@ -1,14 +1,15 @@
 ---
 name: windows-gui-control
 description: >
-  Drive Windows GUI applications from an agent without any plugin: screenshot
-  the screen, capture ONE window even while other windows cover it (PrintWindow),
-  read the real control tree (name / AutomationId / rectangle) through UI
-  Automation or the pywinauto bridge, move the real mouse, type through the
-  clipboard, and prove a click changed something. Use when a task must operate a
-  program that has no usable CLI (STM32CubeMX, Keil uVision, STM32CubeProgrammer,
-  installer wizards), to dismiss popup dialogs, to click "Generate Code" / "OK",
-  or when the user says 帮我点一下 / 截图看看 / 自动化这个界面.
+  Function reference for the bundled ui.ps1 / uia.py: which function to call for
+  screenshot, single-window capture (PrintWindow, works while covered), UIA tree
+  and semantic click, real mouse, clipboard typing, click verification — plus the
+  hard rules and coordinate math they all depend on. Load this when you already
+  know a GUI must be automated and need the exact signature, the decision ladder,
+  or the pitfalls (window not foreground, DPI scale, minimized window, elevated
+  window). For the general "look then act" strategy see windows-screen-automation;
+  for typing see windows-input-bridge; for the control tree see
+  windows-uia-inspector.
 ---
 
 # Windows GUI control
@@ -134,15 +135,20 @@ it can turn a coordinate-clicking nightmare into normal semantic control.
 | `Test-Occluded -Window $w` | Compares the two: `{Occluded=$true; Diff=195.4}` proves it was covered |
 
 `Get-WindowCapture` returns `{Status, Path, Minimized, Foreground, Left, Top,
-Width, Height}`. For a minimized window `Status` is `TOOSMALL 158x26 iconic=True`
-— restore it first (`Focus-Window`), there is no way to read a minimized
-window's pixels.
+Width, Height}`. A minimized window yields a 158x26 rectangle and no pixels, so
+since 0.1.2 it **throws** (`cannot capture: TOOSMALL ... iconic=True`) instead of
+handing back a `Path` that does not exist; `Focus-Window` first, or pass
+`-NoThrow` to get the status object. The default `Path` includes the HWND
+(`win_<hwnd>_capture.png`) so two windows never overwrite each other's file.
+
+`Test-Occluded` writes `$env:TEMP\<Tag>_<random>_win.png` / `_screen.png` and
+returns those exact paths — do not assume a fixed filename, read `.WindowPng`.
 
 ### Find and act
 
 | Function | What it does |
 |---|---|
-| `Get-WindowList` / `Get-Window -Like` / `Get-WindowByPid` | enumerate / match |
+| `Get-WindowList` / `Get-Window -Like` / `Get-Window -Hwnd n` / `Get-WindowByPid` | enumerate / match (rows from `Get-WindowList` are accepted anywhere a window is) |
 | `Get-UiNodes -Window $w -Max 400` | every control with `Type/Name/AutomationId/Enabled/X/Y/Element` |
 | `Get-UiTree -Window $w` | the same as printable indented text (paste into a report) |
 | `Find-UiElement -Window $w -Name/-AutomationId/-Type` | first matching live element |
@@ -166,8 +172,22 @@ python ...\uia.py click --title "Notepad" --auto-id 1234
 python ...\uia.py value --title "..." --auto-id 5678
 ```
 
-Exit codes: `0` ok, `2` window/control not found, `1` unexpected error.
-It prints JSON for `find`, so a caller can act on `center` without seeing pixels.
+Exit codes: `0` ok, `2` window/control not found, `3` refused (see below),
+`1` unexpected error. It prints JSON for `find` (including the `patterns` the
+control actually supports and its `center`), so a caller can act without pixels.
+
+`click` is **semantic first**: it tries Invoke → Select → Toggle and only falls
+back to a physical click when the element supports none of them. A physical
+click is refused with exit code 3 unless the target window is foreground —
+otherwise the click lands on whatever is on top of it:
+
+```json
+{"clicked": false, "refused": "target window is not foreground; ...", "hint": "call `python uia.py focus` ..."}
+```
+
+Pass `--force` only when you have checked the stacking yourself.
+`value --auto-id LBL` reads a Label's text; `value --name "OK"` matches the
+visible text, which is not the same thing (`--name` looks at window text).
 
 ## Hard rules (each one cost something to learn)
 
@@ -218,6 +238,20 @@ It prints JSON for `find`, so a caller can act on `center` without seeing pixels
   back to `BitBlt` from the window DC, then to a plain screen grab.
 - **After clicking in a browser, wait 1–4 s before judging.** DOM updates are
   async; a screenshot taken too early shows the old page and looks like a miss.
+- **Elevated (UAC) windows are invisible to you.** A non-elevated process cannot
+  send input to, or read the UIA tree of, a window running as administrator
+  (UIPI). Symptom: the window is in `Get-WindowList`, `Invoke-ClickElement`
+  silently does nothing, `uia.py` prints `CONTROL NOT FOUND`. Do not retry —
+  ask the user to close it, or that one action needs their hand.
+- **Screenshots are other people's private data.** Capture a single window
+  (`Get-WindowCapture`) rather than the whole desktop, and do not read windows
+  that are not part of the task (chat, mail, password managers). If a private
+  window happens to be in a full-screen shot, do not quote or describe it.
+- **Keep `ui.ps1` and any code you paste into a `pwsh` call ASCII-only.** Windows
+  PowerShell 5.1 decodes `.ps1` as ANSI and command text as ANSI too: a Chinese
+  character inside a here-string or a `Replace` argument once produced
+  `字符串缺少终止符` / `UnexpectedToken` and a corrupted file. CJK belongs in
+  arguments, JSON payloads and skill docs — never hard-coded into the script.
 
 ## Recipes
 

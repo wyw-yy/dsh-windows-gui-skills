@@ -1,26 +1,33 @@
 """pywinauto bridge for the windows-gui-control skill.
 
-Why this exists: PowerShell + UIA can already dump a control tree, but
-pywinauto gives a friendlier walker, proper ValuePattern/TextPattern readers
-and backend="uia"/"win32" switching. It is the same underlying Windows APIs,
-so it sees exactly what UIA sees (nothing more).
+Why this exists: pywinauto gives a friendlier tree walker than raw UIA COM and
+handy TextPattern/ValuePattern readers, with backend="uia"/"win32" switching.
+It is the same Windows APIs underneath, so it sees exactly what UIA sees and
+nothing more (no pixels, no Java/SWT internals).
 
-Usage (all output is plain text or JSON on stdout):
+Usage (stdout is text, or JSON for find/click/value):
 
   python uia.py windows
   python uia.py tree   --title "STM32CubeMX" --depth 4
   python uia.py find   --title "..." --name "GENERATE CODE"
-  python uia.py click  --title "..." --name "OK"
-  python uia.py click  --title "..." --auto-id 1234
+  python uia.py click  --title "..." --name "OK"          # semantic click (Invoke/Select/Toggle)
+  python uia.py click  --title "..." --auto-id 1234 --input  # physical click, refuses if not foreground
   python uia.py text   --title "..."
   python uia.py focus  --title "..."
   python uia.py value  --title "..." --auto-id 5678
 
-Every command exits 0 on success, 2 when the window/control is not found,
-1 on an unexpected error (message on stderr).
+Exit codes: 0 ok, 2 window/control not found, 3 refused (unsafe physical click),
+1 unexpected error (message on stderr).
+
+Two rules this script enforces, because breaking them cost real damage:
+  * a semantic click never moves the mouse, so it cannot hit whatever window is
+    on top;
+  * a physical click is refused unless the target window is already foreground,
+    because click_input() posts at absolute screen coordinates.
 """
 
 import argparse
+import ctypes
 import json
 import sys
 
@@ -37,6 +44,13 @@ for _s in (sys.stdout, sys.stderr):
         _s.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+
+
+def is_foreground(handle):
+    try:
+        return int(handle) == int(ctypes.windll.user32.GetForegroundWindow())
+    except Exception:
+        return False
 
 
 def iter_windows():
@@ -56,59 +70,155 @@ def iter_windows():
 
 
 def find_window(title=None, handle=None):
+    """Return a resolved wrapper (never a WindowSpecification).
+
+    pywinauto's Desktop().window(...) returns a *spec*; only after .exists() /
+    .wrapper_object() do you get a wrapper with .children(), .descendants() and
+    .handle. Mixing the two is what made every control lookup fail before.
+    """
     desktop = Desktop(backend="uia")
     if handle:
-        return desktop.window(handle=handle)
+        spec = desktop.window(handle=handle)
+        return spec.wrapper_object() if spec.exists(timeout=1.0) else None
     if not title:
         raise SystemExit("need --title or --handle")
-    # exact title first, then substring
-    try:
-        w = desktop.window(title=title)
-        if w.exists(timeout=0.3):
-            return w
-    except Exception:
-        pass
+    exact = desktop.window(title=title)
+    if exact.exists(timeout=0.3):
+        return exact.wrapper_object()
+    # Desktop().windows() can hand back ElementInfo objects, which have no
+    # .descendants(); blindly calling .wrapper_object() inside the match loop
+    # made every lookup return None (the AttributeError was swallowed here).
     for w in desktop.windows():
         try:
-            if title.lower() in (w.window_text() or "").lower():
-                return w
+            text = w.window_text() or ""
+        except Exception:
+            continue
+        if title.lower() not in text.lower():
+            continue
+        if hasattr(w, "descendants"):
+            return w
+        try:
+            return w.wrapper_object()
         except Exception:
             continue
     return None
 
 
+def print_not_found(title=None, handle=None):
+    print("WINDOW NOT FOUND (%s)" % (handle or title), file=sys.stderr)
+    try:
+        names = []
+        for w in Desktop(backend="uia").windows():
+            try:
+                names.append((w.window_text() or "").strip())
+            except Exception:
+                continue
+        names = [n for n in names if n][:12]
+        if names:
+            print("available windows:", file=sys.stderr)
+            for n in names:
+                print("  - %s" % n, file=sys.stderr)
+    except Exception:
+        pass
+
+
+def depth_of(el):
+    """Walk element_info.parent up to the desktop to get a real nesting depth."""
+    depth = 0
+    try:
+        node = el.element_info
+        while node is not None and depth < 40:
+            node = getattr(node, "parent", None)
+            if node is None:
+                break
+            depth += 1
+    except Exception:
+        return 0
+    return max(depth - 1, 0)
+
+
+def match(el, name=None, auto_id=None, control_type=None):
+    try:
+        if control_type and (el.element_info.control_type or "") != control_type:
+            return False
+        if name is not None and (el.window_text() or "") != name:
+            return False
+        if auto_id is not None and (el.element_info.automation_id or "") != auto_id:
+            return False
+    except Exception:
+        return False
+    return True
+
+
 def control_of(w, name=None, auto_id=None, control_type=None):
-    crit = {}
-    if name:
-        crit["title"] = name
-    if auto_id:
-        crit["auto_id"] = auto_id
-    if control_type:
-        crit["control_type"] = control_type
-    if not crit:
+    """Find one control inside a wrapper. Works on the wrapper itself too."""
+    if not (name or auto_id or control_type):
         raise SystemExit("need --name / --auto-id / --type")
-    return w.child_window(**crit)
+    if match(w, name, auto_id, control_type):
+        return w
+    try:
+        for c in w.descendants():
+            if match(c, name, auto_id, control_type):
+                return c
+    except Exception:
+        pass
+    return None
+
+
+def describe(c):
+    r = c.rectangle()
+    try:
+        patterns = [p for p in ("invoke", "select", "toggle", "set_edit_text")
+                    if hasattr(c, p)]
+    except Exception:
+        patterns = []
+    return {
+        "class": c.friendly_class_name(),
+        "control_type": c.element_info.control_type,
+        "text": c.window_text(),
+        "auto_id": c.element_info.automation_id,
+        "rect": [r.left, r.top, r.right, r.bottom],
+        "center": [(r.left + r.right) // 2, (r.top + r.bottom) // 2],
+        "enabled": c.is_enabled(),
+        "patterns": patterns,
+    }
+
+
+def semantic_click(c):
+    errors = []
+    for name in ("invoke", "select", "toggle"):
+        try:
+            getattr(c, name)()
+            return name
+        except Exception as exc:
+            errors.append("%s:%s" % (name, exc.__class__.__name__))
+    raise RuntimeError("no semantic click pattern worked (%s)" % ", ".join(errors))
 
 
 def cmd_windows(_a):
     for info in iter_windows():
         if info["title"]:
             print("%-9s pid=%-6s %-22s %s" % (info["handle"], info["pid"], info["class"][:22], info["title"]))
+    return 0
 
 
 def cmd_tree(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
-    w.set_focus()
+    try:
+        w.set_focus()
+    except Exception:
+        pass
     for c in w.descendants(depth=a.depth):
         try:
+            d = depth_of(c)
             r = c.rectangle()
             print(
                 "%s%s | id=%s | %s [%d,%d]"
                 % (
-                    "  " * 0,
+                    "  " * d,
                     c.friendly_class_name(),
                     c.element_info.automation_id or "-",
                     (c.window_text() or "")[:60].replace("\n", " "),
@@ -124,42 +234,52 @@ def cmd_tree(a):
 def cmd_find(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("WINDOW NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
     c = control_of(w, a.name, a.auto_id, a.type)
-    if not c.exists(timeout=a.timeout):
+    if c is None:
         print("CONTROL NOT FOUND", file=sys.stderr)
         return 2
-    r = c.rectangle()
-    print(json.dumps({
-        "class": c.friendly_class_name(),
-        "text": c.window_text(),
-        "auto_id": c.element_info.automation_id,
-        "rect": [r.left, r.top, r.right, r.bottom],
-        "center": [(r.left + r.right) // 2, (r.top + r.bottom) // 2],
-        "enabled": c.is_enabled(),
-    }, ensure_ascii=False))
+    print(json.dumps(describe(c), ensure_ascii=False))
     return 0
 
 
 def cmd_click(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("WINDOW NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
     c = control_of(w, a.name, a.auto_id, a.type)
-    if not c.exists(timeout=a.timeout):
+    if c is None:
         print("CONTROL NOT FOUND", file=sys.stderr)
         return 2
-    c.click_input()
-    print("CLICKED")
+
+    if a.input:
+        if not is_foreground(w.handle) and not a.force:
+            print(json.dumps({
+                "clicked": False,
+                "refused": "target window is not foreground; a physical click would land on whatever is on top",
+                "hint": "call `python uia.py focus`, re-check occlusion, or pass --force knowingly",
+            }, ensure_ascii=False))
+            return 3
+        try:
+            w.set_focus()
+        except Exception:
+            pass
+        c.click_input()
+        print(json.dumps({"clicked": True, "method": "click_input", "foreground": is_foreground(w.handle)},
+                         ensure_ascii=False))
+        return 0
+
+    method = semantic_click(c)
+    print(json.dumps({"clicked": True, "method": method}, ensure_ascii=False))
     return 0
 
 
 def cmd_text(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("WINDOW NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
     seen = []
     for c in w.descendants(depth=a.depth):
@@ -177,10 +297,10 @@ def cmd_text(a):
 def cmd_value(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("WINDOW NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
     c = control_of(w, a.name, a.auto_id, a.type)
-    if not c.exists(timeout=a.timeout):
+    if c is None:
         print("CONTROL NOT FOUND", file=sys.stderr)
         return 2
     try:
@@ -198,7 +318,7 @@ def cmd_value(a):
 def cmd_focus(a):
     w = find_window(a.title, a.handle)
     if w is None:
-        print("WINDOW NOT FOUND", file=sys.stderr)
+        print_not_found(a.title, a.handle)
         return 2
     w.set_focus()
     print("FOCUSED")
@@ -214,12 +334,19 @@ def main():
         sp.add_argument("--handle", type=int)
         sp.add_argument("--timeout", type=float, default=2.0)
 
+    def target(sp):
+        sp.add_argument("--name")
+        sp.add_argument("--auto-id")
+        sp.add_argument("--type")
+
     common(sub.add_parser("windows"))
     sp = sub.add_parser("tree"); common(sp); sp.add_argument("--depth", type=int, default=4)
-    sp = sub.add_parser("find"); common(sp); sp.add_argument("--name"); sp.add_argument("--auto-id"); sp.add_argument("--type")
-    sp = sub.add_parser("click"); common(sp); sp.add_argument("--name"); sp.add_argument("--auto-id"); sp.add_argument("--type")
+    sp = sub.add_parser("find"); common(sp); target(sp)
+    sp = sub.add_parser("click"); common(sp); target(sp)
+    sp.add_argument("--input", action="store_true", help="physical click instead of Invoke/Select/Toggle")
+    sp.add_argument("--force", action="store_true", help="allow a physical click even if the window is not foreground")
     sp = sub.add_parser("text"); common(sp); sp.add_argument("--depth", type=int, default=4)
-    sp = sub.add_parser("value"); common(sp); sp.add_argument("--name"); sp.add_argument("--auto-id"); sp.add_argument("--type")
+    sp = sub.add_parser("value"); common(sp); target(sp)
     common(sub.add_parser("focus"))
 
     a = p.parse_args()

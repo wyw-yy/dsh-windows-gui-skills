@@ -70,19 +70,29 @@ fast blink = clock error, dark = pin or wiring.
 ### 3b. Check the PLL arithmetic, especially PLLM
 
 STM32F4 limits: **PLL input 1–2 MHz, VCO output 192–432 MHz** (F401: 192–432).
-`HAL_RCC_OscConfig` validates these and returns `HAL_ERROR` outside the range —
-it does not clamp, it fails.
+Two caveats, both verified against the HAL source on this machine
+(`Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c`):
+
+- **HAL does not validate frequencies.** `assert_param(IS_RCC_PLLM_VALUE(...))`
+  and `IS_RCC_PLLN_VALUE(...)` only check bit widths (PLLM 2..63, PLLN 50..432).
+  `PLLM=8 / PLLN=336` passes every assertion while producing a 672 MHz VCO.
+- **The failure comes back as `HAL_TIMEOUT`, not `HAL_ERROR`** — line 487 returns
+  `HAL_TIMEOUT` after spinning on `RCC_FLAG_PLLRDY`. So HAL neither clamps nor
+  rejects: it programs the registers and then waits for a lock that may never
+  come. Always compare with `!= HAL_OK`, never `== HAL_ERROR`.
 
 Real failure (2026-10-18, STM32F401RCT6, CubeMX output):
 
 ```
 OscillatorType = HSI (16 MHz)      PLLM = 8    PLLN = 336    PLLP = /4
-PLL input  = 16/8  = 2 MHz         ok
-VCO output = 2*336 = 672 MHz        > 432  ->  HAL_ERROR -> Error_Handler -> dark LED
+PLL input  = 16/8  = 2 MHz         inside 1-2 MHz, HAL is happy
+VCO output = 2*336 = 672 MHz       > 432 MHz, HAL knows nothing about it
 ```
 
-Those PLL values were correct for an **8 MHz HSE** and wrong for **16 MHz HSI**.
-Two working configurations:
+Outcome observed: the board flashed with `Verify OK` and the LED never moved, because
+the clock init never returns success and `Error_Handler()` spins forever. Those PLL
+values were correct for an **8 MHz HSE** and wrong for **16 MHz HSI**. Two working
+configurations:
 
 | Source | PLLM | PLLN | PLLP | SYSCLK | PLLQ |
 |---|---|---|---|---|---|
@@ -91,10 +101,15 @@ Two working configurations:
 
 Rule: before trusting a `.ioc`, check `OscillatorType` and confirm the PLLM
 matches that source. CubeMX writes derived values (`VCOOutputFreq_Value`, …)
-that can be stale after a hand edit; the generated `.c` is the truth.
+that can be stale after a hand edit; the generated `.c` is the truth. A `.ioc`
+shipped with `HCLK=168000000` is F407/F411 arithmetic and is out of range on an
+F401 — verify the generated C, not the .ioc field.
 
 Also check `FLASH_LATENCY`: 84 MHz at 3.3 V needs `FLASH_LATENCY_2`, and
-`PWR_REGULATOR_VOLTAGE_SCALE2` at 84 MHz (Scale1 below 84, Scale2 above).
+`PWR_REGULATOR_VOLTAGE_SCALE2` above 84 MHz. (These two numbers match RM0368 and
+the datasheet wait-state table; the exact page numbers are still to be cited — a
+review flagged them as "consistent but uncited", so treat them as strong
+convention rather than quoted spec.)
 
 ### 3c. Is the LED on that pin at all?
 

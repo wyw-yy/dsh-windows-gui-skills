@@ -109,7 +109,10 @@ function Get-WindowList {
 function Get-Window {
   # Wildcards by default: * and ? work, everything else is literal.
   # Pass -Regex for a raw regular expression.
-  param([string]$Like, [switch]$Regex)
+  param([string]$Like, [switch]$Regex, [int64]$Hwnd = 0)
+  if ($Hwnd -gt 0) {
+    try { return [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$Hwnd) } catch { return $null }
+  }
   if (-not $Like) { return $null }
   $pattern = $Like
   if (-not $Regex) {
@@ -177,6 +180,21 @@ function Start-GuiApp {
 function Assert-Window {
   param($Window, [string]$Hint = 'window not found: got $null (app not started yet, or matched by PID of a launcher process)')
   if ($null -eq $Window) { throw $Hint }
+  # Accept a raw HWND (int / IntPtr) as well as an AutomationElement and
+  # return the element, so callers can write: $Window = Assert-Window $Window
+  if ($Window -is [int] -or $Window -is [int64] -or $Window -is [System.IntPtr]) {
+    $h = [IntPtr][int64]$Window
+    if ($h -eq [IntPtr]::Zero) { throw $Hint }
+    try { return [System.Windows.Automation.AutomationElement]::FromHandle($h) } catch { throw $Hint }
+  }
+  # A row from Get-WindowList (pscustomobject with .Pid/.Name/.Handle) also works.
+  if (-not $Window.PSObject.Properties['Current']) {
+    $hh = $Window.PSObject.Properties['Handle']
+    if ($hh -and [int64]$hh.Value -ne 0) {
+      try { return [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr][int64]$hh.Value) } catch { throw $Hint }
+    }
+    throw $Hint
+  }
   try { $h = $Window.Current.NativeWindowHandle } catch { throw $Hint }
   if (-not $h -or [int64]$h -eq 0) { throw $Hint }
   return $Window
@@ -184,7 +202,7 @@ function Assert-Window {
 
 function Get-WindowRect {
   param($Window)
-  $null = Assert-Window $Window
+  $Window = Assert-Window $Window
   $h = [IntPtr]$Window.Current.NativeWindowHandle
   $r = New-Object Win32UI+RECT
   [Win32UI]::GetWindowRect($h, [ref]$r) | Out-Null
@@ -193,7 +211,7 @@ function Get-WindowRect {
 
 function Focus-Window {
   param($Window)
-  $null = Assert-Window $Window
+  $Window = Assert-Window $Window
   $h = [IntPtr]$Window.Current.NativeWindowHandle
   [Win32UI]::ShowWindow($h, 9) | Out-Null
   [Win32UI]::SetForegroundWindow($h) | Out-Null
@@ -322,7 +340,8 @@ public class Win32Capture {
   public static string Grab(IntPtr h, string path, uint flags) {
     RECT r; GetWindowRect(h, out r);
     int w = r.Right - r.Left, hh = r.Bottom - r.Top;
-    if (w < 40 || hh < 40) return "TOOSMALL " + w + "x" + hh + " iconic=" + IsIconic(h);
+    if (IsIconic(h)) return "TOOSMALL " + w + "x" + hh + " iconic=True";
+    if (w < 40 || hh < 40) return "TOOSMALL " + w + "x" + hh + " iconic=False";
     using (Bitmap b = new Bitmap(w, hh, PixelFormat.Format32bppArgb))
     using (Graphics g = Graphics.FromImage(b)) {
       IntPtr dc = g.GetHdc();
@@ -372,12 +391,18 @@ function Get-ScreenRegion {
 # Works for covered windows; NOT for minimized ones (Windows reports a
 # 158x26 rect for those, so restore first with Focus-Window).
 function Get-WindowCapture {
-  param($Window, [string]$Path = "$env:TEMP\win_capture.png")
-  $null = Assert-Window $Window
+  param($Window, [string]$Path = '', [switch]$NoThrow)
+  $Window = Assert-Window $Window
   $h = [IntPtr]$Window.Current.NativeWindowHandle
+  if (-not $Path) { $Path = "$env:TEMP\win_$([int64]$h)_capture.png" }
   $rc = [Win32Capture]::Rect($h).Split(' ')
   $res = [Win32Capture]::Grab($h, $Path, 2)
   if ($res -like 'FAIL*') { $res = [Win32Capture]::Grab($h, $Path, 0) }
+  # A minimized window reports a 158x26 rectangle and yields no pixels, so the
+  # returned Path would not exist. Fail loudly unless the caller asked not to.
+  if ($res -like 'TOOSMALL*' -and -not $NoThrow) {
+    throw "cannot capture: $res (window is minimized or collapsed). Call Focus-Window first, or pass -NoThrow to get the status object."
+  }
   return [pscustomobject]@{
     Status    = $res
     Path      = $Path
@@ -391,10 +416,11 @@ function Get-WindowCapture {
 # screen rectangle. High value (> 20) proves the window is covered.
 function Test-Occluded {
   param($Window, [string]$Tag = 'occ')
-  $cap = "$env:TEMP\${Tag}_win.png"
-  $scr = "$env:TEMP\${Tag}_screen.png"
-  $info = Get-WindowCapture -Window $Window -Path $cap
-  if ($info.Status -like 'TOOSMALL*') { return [pscustomobject]@{ Occluded = $false; Diff = 0; Note = $info.Status } }
+  $stamp = [guid]::NewGuid().ToString('N').Substring(0, 8)
+  $cap = "$env:TEMP\${Tag}_$stamp`_win.png"
+  $scr = "$env:TEMP\${Tag}_$stamp`_screen.png"
+  $info = Get-WindowCapture -Window $Window -Path $cap -NoThrow
+  if ($info.Status -like 'TOOSMALL*') { return [pscustomobject]@{ Occluded = $false; Diff = 0; Note = $info.Status; WindowPng = $null; ScreenPng = $null } }
   $null = Get-ScreenRegion -X $info.Left -Y $info.Top -Width $info.Width -Height $info.Height -Path $scr
   $d = [Win32Capture]::Diff($cap, $scr)
   return [pscustomobject]@{ Occluded = ($d -gt 20); Diff = [math]::Round($d, 1); WindowPng = $cap; ScreenPng = $scr }
@@ -403,7 +429,7 @@ function Test-Occluded {
 # Full UIA walk (breadth first) returning both printable rows and live elements.
 function Get-UiNodes {
   param($Window, [int]$Max = 400, [int]$MaxDepth = 8)
-  $null = Assert-Window $Window
+  $Window = Assert-Window $Window
   $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
   $rows = @()
   $q = New-Object System.Collections.Queue
@@ -482,7 +508,7 @@ function Invoke-ClickElement {
 # Returns { Changed = $true/$false, Diff = n }.
 function Invoke-VerifiedClick {
   param($Window, [int]$X, [int]$Y, [int]$TimeoutMs = 2500)
-  $null = Assert-Window $Window
+  $Window = Assert-Window $Window
   $before = "$env:TEMP\vc_before.png"
   $after = "$env:TEMP\vc_after.png"
   $null = Get-WindowCapture -Window $Window -Path $before
