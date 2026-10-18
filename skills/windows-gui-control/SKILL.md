@@ -32,6 +32,27 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 Both lines are mandatory in **every** fresh `pwsh` call: execution policy blocks
 `.ps1`, and each tool call is a new process.
 
+Then, before the first screenshot, pin the coordinate space:
+
+```powershell
+Set-DpiAware          # 150%-scaled displays otherwise report 1707x1067 while capturing 2560x1600
+Get-ScreenInfo        # ImageW/ScreenW/ImageScale — the exact factor to apply to preview pixels
+```
+
+## Coordinate math that keeps failing
+
+Three different sizes are in play and they get confused constantly:
+
+| Thing | Typical value | Meaning |
+|---|---|---|
+| physical screen | 2560x1600 | what `Click(x,y)` and `SetCursorPos` take |
+| what a DPI-unaware process reports | 1707x1067 | `Screen.PrimaryScreen.Bounds` before `Set-DpiAware` |
+| the image the model sees | 1610x1006 | a *preview*: it was downscaled on the way in |
+
+Rule: measure on the image you are looking at, then
+`physical = preview_px * (ImageW / preview_px_wide)`. After `Set-DpiAware` the
+capture is 1:1, so `ImageScale` is 1 and only the preview downscale remains.
+
 ## Decision ladder — always start at the top
 
 Cheapest and most reliable first. Do not skip a rung because the next one is
@@ -179,6 +200,24 @@ It prints JSON for `find`, so a caller can act on `center` without seeing pixels
 - **Window titles carry trailing spaces.** `title SMOKEWIN` yields `"SMOKEWIN "`
   (length 9), so `-Like '^SMOKEWIN$'` finds nothing while `-Like 'SMOKEWIN'`
   works. Never anchor a title regex with `$`.
+- **`Get-Window -Like` takes wildcards, not raw regex.** It already bit once:
+  `-Like '*Device Activation*'` was passed straight into `-match`, threw
+  `The following error occurred: quantifier {x,y} following nothing`, and a retry
+  loop turned that into 17.6k tokens of the same exception. Wildcards are now
+  translated; use `-Regex` only when you really mean regex.
+- **A DPI-unaware process misreports the screen.** Same machine reported
+  1707x1067 and captured 2560x1600 in alternating calls, so a coordinate that
+  worked one minute earlier missed the next. `Set-DpiAware` first, always.
+- **Chromium/Electron page content is not in the UIA tree.** A full browser page
+  exposes ~38 elements: window frame, tab strip, address bar, buttons — no DOM.
+  Everything inside the viewport needs pixels or DevTools, not UIA.
+- **Java/SWT apps expose only the window frame** too (CubeMX: 最小化 / 最大化 /
+  关闭 and nothing else). Do not spend calls hunting for controls; go to pixels.
+- **`PrintWindow` can return black or stale** frames for GPU-composited windows.
+  Check the result (mean brightness, diff against screen); when it fails, fall
+  back to `BitBlt` from the window DC, then to a plain screen grab.
+- **After clicking in a browser, wait 1–4 s before judging.** DOM updates are
+  async; a screenshot taken too early shows the old page and looks like a miss.
 
 ## Recipes
 

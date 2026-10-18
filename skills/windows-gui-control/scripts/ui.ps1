@@ -35,6 +35,41 @@ public class Win32UI {
   Add-Type -TypeDefinition $src
 }
 
+function Set-DpiAware {
+  # Call once per shell process. Without it a 150% display reports 1707x1067
+  # while the capture is 2560x1600, and every click misses by the scale factor.
+  if (-not ("Win32Dpi" -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class Win32Dpi {
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+}
+'@
+  }
+  [void][Win32Dpi]::SetProcessDPIAware()
+  $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  return [pscustomobject]@{ Width = $b.Width; Height = $b.Height }
+}
+
+function Get-ScreenInfo {
+  # Screenshot + the numbers you need to convert preview pixels into clicks.
+  param([string]$Path = "$env:TEMP\screen.png")
+  $p = Get-Screen -Path $Path
+  $img = [System.Drawing.Image]::FromFile($p)
+  $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $info = [pscustomobject]@{
+    Path       = $p
+    ImageW     = $img.Width
+    ImageH     = $img.Height
+    ScreenW    = $b.Width
+    ScreenH    = $b.Height
+    ImageScale = [math]::Round($img.Width / $b.Width, 4)
+  }
+  $img.Dispose()
+  return $info
+}
+
 function Get-Screen {
   param([string]$Path = "$env:TEMP\screen.png")
   $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
@@ -72,9 +107,16 @@ function Get-WindowList {
 }
 
 function Get-Window {
-  param([string]$Like)
+  # Wildcards by default: * and ? work, everything else is literal.
+  # Pass -Regex for a raw regular expression.
+  param([string]$Like, [switch]$Regex)
+  if (-not $Like) { return $null }
+  $pattern = $Like
+  if (-not $Regex) {
+    $pattern = [regex]::Escape($Like).Replace('\*', '.*').Replace('\?', '.')
+  }
   foreach ($w in Get-WindowList) {
-    if ($w.Name -match $Like) {
+    if ($w.Name -match $pattern) {
       $root = [System.Windows.Automation.AutomationElement]::RootElement
       $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $w.Name)
       return $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
