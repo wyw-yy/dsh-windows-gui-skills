@@ -98,7 +98,7 @@ The script forces UTF-8 on stdout; without that, CJK titles crash on a GBK conso
 |---|---|---|
 | Win32 dialog, MFC, WPF, WinForms | full tree | semantic clicks, done |
 | Qt (many apps) | partial tree, custom widgets missing | mix: tree for buttons, pixels for canvas |
-| Java/SWT (CubeMX) | only 最小化/最大化/关闭 | try `jabswitch.exe -enable` (ships in the JRE: `<app>\jre\bin\jabswitch.exe`), restart app; if still empty → coordinates |
+| Java/SWT (CubeMX) | only 最小化/最大化/关闭 | `jabswitch.exe -enable` **tested, does not help CubeMX 6.16.1** (6 nodes before and after, DLLs present, app restarted) → coordinates + window capture |
 | Electron / Chromium | window + a few panes, no DOM | pixels, or drive via CDP/`--remote-debugging-port` |
 | Game / DirectUI shell | nothing | pixels |
 

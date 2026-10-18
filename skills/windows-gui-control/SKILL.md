@@ -122,6 +122,16 @@ SWT/AWT apps can be exposed to UIA if Java Access Bridge is on:
 If the app is a Java app and UIA shows nothing, this is the first thing to try;
 it can turn a coordinate-clicking nightmare into normal semantic control.
 
+**Tested negative on STM32CubeMX 6.16.1** (2026-10-18): `jabswitch -enable`
+reported success, `javaaccessbridge.dll` + `windowsaccessbridge-64.dll` are
+present in the bundled JRE, the app was relaunched — and the UIA tree still
+contained exactly six nodes (TitleBar, system menu, 最小化/最大化/关闭), with no
+"GENERATE CODE" or any other business control. So:
+`jabswitch` is worth one 30-second try, not worth a second attempt. Disable it
+again (`-disable`) if it changed nothing, and fall back to window capture +
+coordinates. CubeMX draws its canvas itself; there is no accessibility tree to
+find.
+
 ## Functions
 
 ### Look

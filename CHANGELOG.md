@@ -16,6 +16,10 @@
   物理像素矩形与 `GetSystemMetrics` 的逻辑像素在 150% 缩放下互相矛盾。
 - 文档补：退出码 0/2/3/4 语义、`--focus` 用法、拒绝路径的可复现测法
   （同一个测试窗口开两次，用 `--handle` 指向非前台的那个）。
+- **`jabswitch` 实测结论**：对 STM32CubeMX 6.16.1 无效——`-enable` 成功、
+  JRE 里 `javaaccessbridge.dll` / `windowsaccessbridge-64.dll` 都在、应用重启后
+  UIA 树仍只有 6 个窗口装饰节点（无 `GENERATE CODE`）。两个技能里的建议都改成
+  "试一次就够，别再试第二次"。
 
 ## 0.1.2 — 2026-10-18
 
