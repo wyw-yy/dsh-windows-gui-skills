@@ -1,4 +1,11 @@
-﻿## 0.1.7 - 2026-10-18
+﻿## 0.1.8 - 2026-10-18
+
+- eferences/app-ui-notes.md: added the measured QQ NT section - main panel toggle is
+  Ctrl+Alt+Z (not a click), the panel layout in window-relative coordinates, and the
+  toolbar-row trap that opened a payment dialog when the input area was clicked.
+- Same file: corrected the uVision numbers after the failed click sweep (menu row y=50,
+  toolbars y=88 / y=122) and added the "hover first, never blind-click" rule.
+## 0.1.7 - 2026-10-18
 
 - NEW scripts/flyouts.ps1 (auto-loaded by ui.ps1): learned knowledge base for
   transient UI, plus a correction rule.
@@ -86,6 +93,7 @@ self-match on an identical screenshot scores 0 at the exact position.
 宸茬煡闂锛?
 - 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
 - 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?
+
 
 
 

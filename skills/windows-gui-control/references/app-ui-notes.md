@@ -60,3 +60,29 @@ Window-relative coordinates, measured once and stored in `data/ui-probes.json`:
 
 These are *not* stable across versions and DPI. Re-run the hover sweep after an upgrade
 instead of trusting the numbers.
+
+## QQ NT (9.x, Chromium shell) - measured 2026-10-18
+
+QQ renders nothing when its window is shown with `ShowWindow` by another process: the
+window appears but the client area stays black/white (average brightness 245/255 on a
+"white" one, 0 on a "black" one). Only the app itself can paint it, so **do not force
+it**, use one of these:
+
+| Need | How | Verified |
+|---|---|---|
+| show/hide the main panel | `Ctrl+Alt+Z` sent to any QQ window | yes - the chat window 1707762 became the 1458x966 main panel |
+| open a chat with a known name | click the search box, paste the name, click the first "联系人" row | yes |
+| send text | click the empty input area, paste via clipboard, click "发送" | yes - 10 lines delivered at 21:55 |
+
+Layout of the main panel (window-relative, 1458x966 at 150% scaling):
+
+- search box: (165, 97)
+- first contact row: y = 240 (followed by 群聊 rows, then 聊天记录)
+- input area: y = 760-880, click around (700, 800)
+- "发送": (1340, 916)
+
+**Trap that cost a red packet dialog:** the format toolbar row sits at y = 684
+(emoji / scissors / folder / image / screenshot / sticker / **红包** / voice). A click at
+(700, 700) lands on that row and opened the 红包 dialog. Click the input area *below*
+y = 760, and after every click take a capture before the next one - a wrong click here
+opens a modal that blocks the rest of the sequence.
