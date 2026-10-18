@@ -8,3 +8,5 @@ Thumbs.db
 .idea/
 __pycache__/
 *.pyc
+
+REVIEW-NOTES*.md
