@@ -14,8 +14,9 @@ USAGE
 
 RULES
   * hit  : hits++ ; every 3 hits raise confidence by 1 (max 5)
-  * miss : misses++ ; when misses - hits >= 2 lower confidence by 1;
-           at confidence 1 the entry becomes status=refuted (kept, never used)
+  * miss : misses++ and the consecutive-miss streak grows; TWO CONSECUTIVE
+           misses lower confidence by 1 and reset the streak (a hit resets it
+           too). At confidence 1 the entry becomes status=refuted (kept, never used)
   * prune: over -Max entries, drop the weakest (refuted first, then low
            confidence, then oldest last_verified, then fewest hits)
   * scope: "gui" | "embed" | "io" | "meta" - keep one domain per skill
@@ -81,6 +82,15 @@ function Find-Entry($ledger, $key){
   return ($ledger.entries | Where-Object { $_.key -eq $key } | Select-Object -First 1)
 }
 
+# Older ledgers predate the consecutive-miss counter; add it on demand so a
+# stale entry never makes a write fail.
+function Ensure-Streak($e){
+  if(-not ($e.PSObject.Properties.Name -contains 'consecutive_misses')){
+    $e | Add-Member -NotePropertyName consecutive_misses -NotePropertyValue 0 -Force
+  }
+  return $e
+}
+
 $ledger = Read-Ledger
 $ledger.entries = @($ledger.entries)
 
@@ -108,7 +118,7 @@ switch($Action){
     } else {
       $entry = [pscustomobject]@{
         key = $Key; statement = $Text; scope = $Scope
-        confidence = $Confidence; hits = 0; misses = 0
+        confidence = $Confidence; hits = 0; misses = 0; consecutive_misses = 0
         status = 'active'; evidence = $Evidence
         added = $now; last_verified = $now
       }
@@ -121,7 +131,9 @@ switch($Action){
   'hit' {
     $e = Find-Entry $ledger $Key
     if(-not $e){ throw ("no such key: " + $Key) }
+    $e = Ensure-Streak $e
     $e.hits = [int]$e.hits + 1
+    $e.consecutive_misses = 0
     $e.last_verified = (Get-Date).ToString('yyyy-MM-dd')
     if(($e.hits % 3) -eq 0 -and [int]$e.confidence -lt 5){ $e.confidence = [int]$e.confidence + 1 }
     Write-Output ("hit  " + $Key + "  hits=" + $e.hits + " conf=" + $e.confidence)
@@ -131,12 +143,18 @@ switch($Action){
   'miss' {
     $e = Find-Entry $ledger $Key
     if(-not $e){ throw ("no such key: " + $Key) }
+    $e = Ensure-Streak $e
     $e.misses = [int]$e.misses + 1
-    if(([int]$e.misses - [int]$e.hits) -ge 2){
+    $e.consecutive_misses = [int]$e.consecutive_misses + 1
+    # Documented rule: TWO CONSECUTIVE misses cost one level, then the streak
+    # resets. (Was misses - hits >= 2, i.e. cumulative, which demoted an entry
+    # that had been right many times.)
+    if([int]$e.consecutive_misses -ge 2){
       $e.confidence = [math]::Max(1, [int]$e.confidence - 1)
       if([int]$e.confidence -le 1){ $e.status = 'refuted' }
+      $e.consecutive_misses = 0
     }
-    Write-Output ("miss " + $Key + "  misses=" + $e.misses + " conf=" + $e.confidence + " status=" + $e.status)
+    Write-Output ("miss " + $Key + "  misses=" + $e.misses + " streak=" + $e.consecutive_misses + " conf=" + $e.confidence + " status=" + $e.status)
     Save-Ledger $ledger
   }
 

@@ -1,29 +1,48 @@
-# Install the bundled Agent Skills into the user-level skill folder.
-# No npm, no DSH plugin: just files in %USERPROFILE%\.agents\skills\.
+# Install the bundled Agent Skills into a skill folder.
 #
 #   powershell -ExecutionPolicy Bypass -File install.ps1
+#   powershell -ExecutionPolicy Bypass -File install.ps1 -Dest D:\tmp\skills -Source .\skills
 #
-# Re-running upgrades the skills and KEEPS your local knowledge bases: the
+# Default target is %USERPROFILE%\.agents\skills\. `-Dest` installs somewhere
+# else (a scratch folder, a project-level `<root>\.agents\skills`, ...) and
+# `-Source` installs from a local `skills\` tree instead of downloading main.zip,
+# so a package can be tried before it is pushed.
+#
+# Re-running upgrades the skills and KEEPS the local knowledge bases: the
 # per-skill `data\` and `knowledge\` folders are copied aside before the old
-# folder is replaced and put back afterwards. Start a NEW agent session
-# afterwards so the skill catalog is reloaded.
+# folder is replaced and put back afterwards. The skill catalog refreshes during
+# the same session; only npm plugins need a new session.
+
+[CmdletBinding()]
+param(
+    [string]$Dest = '',
+    [string]$Source = ''
+)
 
 $ErrorActionPreference = 'Stop'
 
+if (-not $Dest) { $Dest = Join-Path $env:USERPROFILE '.agents\skills' }
+$dest = $Dest
+
 $repo = 'wyw-yy/dsh-windows-gui-skills'
-$dest = Join-Path $env:USERPROFILE '.agents\skills'
 $tmp  = Join-Path $env:TEMP ('dsh-wgsk-' + [guid]::NewGuid().ToString('N'))
 
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 try {
-    $zip = Join-Path $tmp 'repo.zip'
-    $url = "https://github.com/$repo/archive/refs/heads/main.zip"
-    Write-Host "downloading $url"
-    Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
-    Expand-Archive -Path $zip -DestinationPath $tmp -Force
-
-    $src = Join-Path $tmp 'dsh-windows-gui-skills-main\skills'
-    if (-not (Test-Path $src)) { throw "skills folder missing in archive: $src" }
+    if ($Source) {
+        $src = Join-Path $Source 'skills'
+        if (-not (Test-Path $src)) { $src = $Source }   # allow pointing straight at skills\
+        if (-not (Test-Path $src)) { throw "no skills folder under -Source: $Source" }
+        Write-Host "installing from $src"
+    } else {
+        $zip = Join-Path $tmp 'repo.zip'
+        $url = "https://github.com/$repo/archive/refs/heads/main.zip"
+        Write-Host "downloading $url"
+        Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+        Expand-Archive -Path $zip -DestinationPath $tmp -Force
+        $src = Join-Path $tmp 'dsh-windows-gui-skills-main\skills'
+        if (-not (Test-Path $src)) { throw "skills folder missing in archive: $src" }
+    }
 
     New-Item -ItemType Directory -Path $dest -Force | Out-Null
     Get-ChildItem -Path $src -Directory | ForEach-Object {
@@ -53,7 +72,7 @@ try {
     }
     Write-Host ""
     Write-Host "done -> $dest"
-    Write-Host "start a new session to reload the catalog"
+    Write-Host "the skill catalog refreshes in the same session; npm plugins are the ones that need a restart"
 }
 finally {
     if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }

@@ -474,6 +474,21 @@ $r.Verdicts; $r.Final; $r.Confidence; $r.Unstable; $r.Region
   rewrites the entry - it takes repeated samples, which is what "check again
   before believing it" means in practice.
 
+- **When the entry is written (the gate).** A lesson can only be rewritten after
+  the evidence repeats, otherwise one fluke becomes permanent:
+
+| verdict | writes to the entry? |
+|---|---|
+| `LEARNED` (no entry yet) | yes, creates it with confidence 1 |
+| `MATCH` | always - refresh region and trigger, confidence +1 |
+| `MOVED` | only after **two consecutive identical** verdicts |
+| `DIFFERENT_UI` | only after **two consecutive identical** verdicts |
+| `GONE` | never rewrites the region; costs confidence -1 **once per invocation**, not once per attempt |
+
+  `GONE` deserves the emphasis: with `-Attempts 3` a failing lookup used to lose
+  3 confidence points in one call and wipe a good entry. The gate now spends at
+  most one point per run, and a `hit`-worthy `MATCH` on the next run earns it back.
+
 Why windows beat pixels here: a full-screen diff is dominated by blinking carets
 and animated text. Measured on a real tooltip: the pixel pass produced a 24x24
 false bbox while the window pass returned the tooltip itself

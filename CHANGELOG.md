@@ -1,101 +1,185 @@
+# Changelog
+
+All notable changes to this skill package. Newest first.
+
+## 0.2.1 - 2026-10-19
+
+Round-3 review fixes (`REVIEW-NOTES-3.md`, deepPCB workspace).
+
+- `install.ps1`: added `param([string]$Dest, [string]$Source)`.
+  - `-Dest` installs into a scratch folder instead of `%USERPROFILE%\.agents\skills`
+    (the reviewer could not try an install without overwriting the real one).
+  - `-Source <dir>` installs from a local `skills\` tree instead of downloading
+    main.zip, so the package can be tested before it is pushed.
+- `lesson.ps1`: the downgrade rule now matches the documentation. It was
+  `misses - hits >= 2` (cumulative difference); it is now **two consecutive
+  misses** (`consecutive_misses` on the entry, reset by `hit` and by `add`).
+  The old rule could demote an entry that had been right ten times; the docs
+  and the 0.2.0 changelog both promised "连续 2 次".
+- `windows-gui-control/SKILL.md`: documented the `flyouts.ps1` write gate
+  (LEARNED once / MATCH every run / MOVED and DIFFERENT_UI need two consecutive
+  identical verdicts / GONE costs at most -1 per invocation) - it was only in
+  the source before.
+- `tools/check_fm.py`: `--root <dir>` so it can validate the shipped package,
+  not just the installed copy. Prints a per-file verdict and exits 1 on failure.
+- `MANIFEST.txt` is now generated with line endings normalised to LF before
+  hashing, and `tools/verify_manifest.ps1` does the same when it checks, so a
+  CRLF checkout no longer reports a false mismatch.
+- `CHANGELOG.md`: the 0.1.0-0.1.3 sections were double-encoded mojibake with
+  replacement characters (information was already lost). They are rewritten
+  from the git log and the corresponding review notes; the sections now carry
+  a `[reconstructed]` marker. The file also had `# Changelog` in the middle and
+  reverse ordering - fixed.
+- `references/app-ui-notes.md` was listed as `eferences/...` in 0.1.8 - fixed.
+
+## 0.2.0 - 2026-10-19
+
+- Every skill gained a `knowledge/` experience base: `lessons.md` (generated,
+  <= 40 lines) and `ledger.json` (counters plus evidence).
+- New `scripts/lesson.ps1`: `add` / `hit` / `miss` / `list` / `prune`.
+  A hit raises confidence every 3 uses, two consecutive misses lower it by 1,
+  confidence 1 marks the entry `[REFUTED]`, and above 40 entries the lowest
+  confidence / oldest / least-hit are pruned.
+- First 20 lessons seeded (`gui.*` / `screen.*` / `uia.*` / `input.*` / `embed.*`).
+
 ## 0.1.8 - 2026-10-18
 
-- eferences/app-ui-notes.md: added the measured QQ NT section - main panel toggle is
+- `references/app-ui-notes.md`: added the measured QQ NT section - main panel toggle is
   Ctrl+Alt+Z (not a click), the panel layout in window-relative coordinates, and the
   toolbar-row trap that opened a payment dialog when the input area was clicked.
 - Same file: corrected the uVision numbers after the failed click sweep (menu row y=50,
   toolbars y=88 / y=122) and added the "hover first, never blind-click" rule.
+
 ## 0.1.7 - 2026-10-18
 
-- NEW scripts/flyouts.ps1 (auto-loaded by ui.ps1): learned knowledge base for
+- NEW `scripts/flyouts.ps1` (auto-loaded by ui.ps1): learned knowledge base for
   transient UI, plus a correction rule.
-  - Get-TransientRegion: passive burst (no cursor move) - UI that appears and
+  - `Get-TransientRegion`: passive burst (no cursor move) - UI that appears and
     leaves on its own inside the burst.
-  - Invoke-Flyout: fast path once confidence >= 2 (6 frames, stored trigger),
+  - `Invoke-Flyout`: fast path once confidence >= 2 (6 frames, stored trigger),
     verification on every run, verdicts MATCH / MOVED / GONE / DIFFERENT_UI.
   - Disagreement between attempts sets Unstable and is recorded in
-    disagreements[] instead of silently overwriting the entry.
-  - KB at %USERPROFILE%\.agents\skills\windows-gui-control\data\flyouts.json.
-- Capture-HoverFlyout rewritten: baseline is taken BEFORE hovering (frame 0 used
+    `disagreements[]` instead of silently overwriting the entry.
+  - KB at `%USERPROFILE%\.agents\skills\windows-gui-control\data\flyouts.json`.
+- `Capture-HoverFlyout` rewritten: baseline is taken BEFORE hovering (frame 0 used
   to already contain the flyout, so the diff said "nothing changed"); pixels are
-  compared only inside -Radius of the cursor; new top-level windows are captured
+  compared only inside `-Radius` of the cursor; new top-level windows are captured
   with PrintWindow and carry class + rect.
-- Get-WindowCapture no longer rejects small windows (a 147x32 tooltip is legit);
+- `Get-WindowCapture` no longer rejects small windows (a 147x32 tooltip is legit);
   only iconic windows and < 8 px are refused.
+
 ## 0.1.6 - 2026-10-18
 
-- NEW Capture-HoverFlyout: capture UI that only exists while the pointer hovers it
+- NEW `Capture-HoverFlyout`: capture UI that only exists while the pointer hovers it
   (flyout, taskbar thumbnail, tooltip). Parks the cursor, bursts 16-18 frames at
   60-70 ms inside the ~1 s lifetime, keeps the richest frame, reports the cluster
   bbox, and PrintWindow-captures any top-level window that appeared during the burst.
-  Verified by capturing a WinForms tooltip (FORM-MARKER, bbox 552,480 168x72) that
+  Verified by capturing a WinForms tooltip (`FORM-MARKER`, bbox 552,480 168x72) that
   exists only during hover.
+
 ## 0.1.5 - 2026-10-18
 
 Self-review of 0.1.4, found and fixed six issues:
 
-- Get-ChangeMask used per-pixel GetPixel (2560x1600 took ~10 s). Rewritten as
-  PixelMask.Write with LockBits + Marshal.Copy: **136 ms** (73x).
-  (unsafe cannot be used: Add-Type compiles without /unsafe.)
-- Invoke-ClickTemplate returned two different shapes; on "not found" it had no
-  .Changed, so callers silently read $null. Now one shape, always with
-  Clicked/Found/Reason/Changed/Ratio/RawRatio.
-- Test-HoverPopup parked the pointer at (X-600, Y-600), which can land on
+- `Get-ChangeMask` used per-pixel GetPixel (2560x1600 took ~10 s). Rewritten as
+  `PixelMask.Write` with LockBits + Marshal.Copy: **136 ms** (73x).
+  (`unsafe` cannot be used: Add-Type compiles without `/unsafe`.)
+- `Invoke-ClickTemplate` returned two different shapes; on "not found" it had no
+  `.Changed`, so callers silently read `$null`. Now one shape, always with
+  `Clicked` / `Found` / `Reason` / `Changed` / `Ratio` / `RawRatio`.
+- `Test-HoverPopup` parked the pointer at (X-600, Y-600), which can land on
   another widget and raise ITS tooltip -> wrong bbox. Now parks at (4,4) and
   restores the original cursor position afterwards.
-- Save-ImageCrop had no bounds check (GDI threw a cryptic error); now throws
+- `Save-ImageCrop` had no bounds check (GDI threw a cryptic error); now throws
   with the rect and the image size.
 - A checkbox tick changes too few pixels for the 24-px-cell cluster pass, so a
-  real click could report Changed=false. Added a raw-ratio fallback
-  (RawRatio >= 0.00005).
-- Win32UI had no GetCursorPos, which Test-HoverPopup needs. Added.
+  real click could report `Changed=false`. Added a raw-ratio fallback
+  (`RawRatio >= 0.00005`).
+- `Win32UI` had no `GetCursorPos`, which `Test-HoverPopup` needs. Added.
 
 Verified: mask 136 ms; template click on a live WinForms button ->
-ound/clicked/changed true and the app's own label went idle -> pong-211549;
+found/clicked/changed true and the app's own label went `idle` -> `pong-211549`;
 self-match on an identical screenshot scores 0 at the exact position.
+
 ## 0.1.4 - 2026-10-18
 
-- NEW scripts/pixelscan.ps1 (auto-loaded by ui.ps1): pixel localization that
+- NEW `scripts/pixelscan.ps1` (auto-loaded by ui.ps1): pixel localization that
   survives window moves and mouse interference.
-  - Get-ScreenBurst / Get-ChangedRegion / Get-ChangeMask: burst capture plus
+  - `Get-ScreenBurst` / `Get-ChangedRegion` / `Get-ChangeMask`: burst capture plus
     cluster-aware diff (largest 8-connected cluster of changed 24px cells).
-  - Find-ImageOnScreen / Invoke-ClickTemplate / Save-ImageCrop: template match
+  - `Find-ImageOnScreen` / `Invoke-ClickTemplate` / `Save-ImageCrop`: template match
     (coarse step 4, then +-8 px refine) with a flat-template guard, plus verified click.
-  - Test-HoverPopup: diff "pointer on target" vs "pointer away" to find flyouts.
-- ui.ps1 now calls Set-DpiAware when dot-sourced, so Click(x,y) is physical
-  pixels on every display scale (previously only Get-ScreenInfo was aware).
-# Changelog
+  - `Test-HoverPopup`: diff "pointer on target" vs "pointer away" to find flyouts.
+- `ui.ps1` now calls `Set-DpiAware` when dot-sourced, so `Click(x,y)` is physical
+  pixels on every display scale (previously only `Get-ScreenInfo` was aware).
 
-## 0.1.3 鈥?2026-10-18
+## 0.1.3 - 2026-10-18 [reconstructed]
 
-绗簩杞鏍革紙`REVIEW-NOTES-2.md`锛夐€愭潯澶勭悊锛?
-- **`click --input` 瀛楁鏀瑰悕**锛氳緭鍑虹敱鍚硦鐨?`foreground` 鏀逛负 `foreground_before`
-  + `foreground_after`锛屾棦鑳借〃绀?鐐逛箣鍓嶅氨鍦ㄥ墠鍙?锛屼篃鑳借〃绀?椤烘墜鎶捣鏉ヤ簡"銆?  鎷掔粷鍒嗘敮鍚屾牱甯?`foreground_before: false`銆?- **`tree` 涓嶅啀鎶㈢劍鐐?*锛氳瀵熺被鎿嶄綔榛樿涓嶈皟 `set_focus`锛岄渶瑕佹椂鏄惧紡鍔?`--focus`銆?  瀹炴祴涓ょ獥鍙ｆ硶楠岃瘉锛氬闈炲墠鍙扮獥鍙ｈ窇 `tree`锛宍GetForegroundWindow()` 鍓嶅悗涓嶅彉銆?- **鏈€灏忓寲 / 鍧愭爣閫€鍖栨姢鏍?*锛氭柊澧?`is_minimized()`銆乣rect_bogus()`銆乣bogus_reason()`銆?  `find` 閬囧埌鏈€灏忓寲绐楀彛涓嶅啀杩斿洖 `(-47940,-47940)` 杩欑被鍧愭爣锛岃€屾槸甯?  `"unusable"` 璇存槑骞堕€€鍑?**4**锛沗click` 鍚屾牱鍏堣繃杩欓亾妫€鏌ワ紙`--force` 鍙秺杩囷級銆?- **DPI 涓€鑷存€?*锛歚main()` 鍚姩鍗?`SetProcessDpiAwareness(2)`锛岄伩鍏?pywinauto 鐨?  鐗╃悊鍍忕礌鐭╁舰涓?`GetSystemMetrics` 鐨勯€昏緫鍍忕礌鍦?150% 缂╂斁涓嬩簰鐩哥煕鐩俱€?- 鏂囨。琛ワ細閫€鍑虹爜 0/2/3/4 璇箟銆乣--focus` 鐢ㄦ硶銆佹嫆缁濊矾寰勭殑鍙鐜版祴娉?  锛堝悓涓€涓祴璇曠獥鍙ｅ紑涓ゆ锛岀敤 `--handle` 鎸囧悜闈炲墠鍙扮殑閭ｄ釜锛夈€?- **`jabswitch` 瀹炴祴缁撹**锛氬 STM32CubeMX 6.16.1 鏃犳晥鈥斺€擿-enable` 鎴愬姛銆?  JRE 閲?`javaaccessbridge.dll` / `windowsaccessbridge-64.dll` 閮藉湪銆佸簲鐢ㄩ噸鍚悗
-  UIA 鏍戜粛鍙湁 6 涓獥鍙ｈ楗拌妭鐐癸紙鏃?`GENERATE CODE`锛夈€備袱涓妧鑳介噷鐨勫缓璁兘鏀规垚
-  "璇曚竴娆″氨澶燂紝鍒啀璇曠浜屾"銆?
-## 0.1.2 鈥?2026-10-18
+Original text was lost to double-encoding; rebuilt from the git log and
+`REVIEW-NOTES-2.md`.
 
-澶栭儴瀹℃牳锛坄REVIEW-NOTES-2026-10-18.md`锛夐€愭潯淇锛?
-- **P0 `uia.py` 宕╂簝**锛歚control_of()` 涓嶅啀瀵?`UIAWrapper` 璋?`child_window()`
-  锛堟鍓?`find`/`click` 蹇呮姏 `'UIAWrapper' object has no attribute 'child_window'`锛夛紝
-  鏀逛负鎸夌鍏堥亶鍘嗗尮閰嶏紝`tree` 鐨勭缉杩涙寜鐪熷疄娣卞害杈撳嚭銆?- **P1 鐗╃悊鐐瑰嚮浼氱偣鍒板埆鐨勭獥鍙?*锛歚uia.py click --input` 鍦ㄧ洰鏍囩獥鍙ｄ笉鏄墠鍙版椂鎷掔粷锛?  閫€鍑虹爜 3 骞剁粰鍑烘彁绀猴紱纭灞傚彔鍏崇郴鍚庢墠鍙?`--force`銆?- **P1 鏂囨。鍐欓敊 HAL 琛屼负**锛歚stm32f4-bringup` 鐨?3b 鑺傜籂姝ｄ负鈥淗AL 涓嶆牎楠?PLL 棰戠巼鈥濓紝
-  `HAL_RCC_OscConfig` 鍦ㄧ瓑 `PLLRDY` 瓒呮椂鍚庤繑鍥?`HAL_TIMEOUT`
-  锛坄stm32f4xx_hal_rcc.c:487`锛屼笉鏄?`HAL_ERROR`锛夛紝骞惰ˉ涓?`.ioc` 閲?  `HCLK=168000000` 鐨勮法鍨嬪彿闄烽槺銆?- **P2 瀹氫綅 API**锛歚Get-Window -Like` 鐪熸寜閫氶厤绗﹁浆涔夛紙`-Regex` 鎵嶅綋姝ｅ垯锛夈€佹柊澧?  `Get-Window -Hwnd` 涓?`-Pattern` / `-Title` 鍒悕锛沗Assert-Window` 鎺ュ彈 HWND銆?  IntPtr 鍜?`Get-WindowList` 鐨勮锛岄敊璇俊鎭篃璇存槑璇ヤ紶浠€涔堛€?- **P2 鎴浘濂戠害**锛歚Get-WindowCapture` 瀵规渶灏忓寲绐楀彛鐩存帴鎶涢敊锛坄-NoThrow` 鎵嶈繑鍥炵姸鎬侊級锛?  榛樿鏂囦欢鍚嶅甫 HWND锛沗Test-Occluded` 鐢ㄩ殢鏈烘枃浠跺悕骞惰繑鍥炵湡瀹?`WindowPng/ScreenPng`銆?- **P2 纭鍒?*锛氳ˉ UAC 鎻愭潈绐楀彛涓嶅彲鎺э紙UIPI锛夈€佹埅鍥炬秹鍙婇殣绉併€佽剼鏈唴淇濇寔 ASCII銆?- **鎻忚堪鍘婚噸**锛歚windows-gui-control` 鏀逛负鈥滃嚱鏁板弬鑰冣€濓紝鍏ュ彛鍒ゆ柇褰?  `windows-screen-automation`锛岄伩鍏嶅洓涓妧鑳界殑瑙﹀彂鎻忚堪浜掔浉閲嶅彔銆?
-## 0.1.0 鈥?2026-10-18
+- `uia.py click --input`: the ambiguous `foreground` field became
+  `foreground_before` + `foreground_after`, so a refusal also states that the
+  window was already in the background.
+- `tree` no longer steals focus by default; `--focus` is opt-in.
+  Verified with two windows: `GetForegroundWindow()` is unchanged before/after.
+- Minimized / degenerate-coordinate guard: new `is_minimized()`, `rect_bogus()`,
+  `bogus_reason()`. `find` stops returning coordinates like `(-47940,-47940)` and
+  exits **4** with an `unusable` reason; `click` runs the same check first
+  (`--force` overrides).
+- DPI consistency: `main()` calls `SetProcessDpiAwareness(2)` at startup so
+  pywinauto's physical rects and `GetSystemMetrics` stop disagreeing at 150%.
+- Docs: exit codes 0/2/3/4, `--focus`, and a reproducible recipe for the refusal
+  path (open the same test window twice, point `--handle` at the background one).
+- `jabswitch` result: no effect on STM32CubeMX 6.16.1 - `-enable` succeeds and the
+  JRE ships `javaaccessbridge.dll` / `windowsaccessbridge-64.dll`, but after an
+  app restart the UIA tree still has only 6 window-decoration nodes and no
+  `GENERATE CODE`. Both skills now say "try once, not twice".
 
-棣栦釜鐗堟湰銆傛妸鍥涗釜鍦ㄧ湡瀹炰换鍔￠噷楠岃瘉杩囩殑鎶€鑳芥墦鍖呮垚 DSH 鎻掍欢銆?
-- `windows-gui-control`锛歚ui.ps1`锛?9 KB锛?5 涓嚱鏁帮級+ `uia.py`锛坧ywinauto 妗ワ級
-- `windows-screen-automation`锛氱湅鈫掔偣鈫掗獙闂幆銆乣Get-WindowCapture` 閬尅鎴浘銆佸儚绱犲樊闃堝€?- `windows-uia-inspector`锛歎IA 鏍?dump銆佸畾浣嶄紭鍏堢骇銆丣ava/SWT 绌烘爲鐨勫缃?- `windows-input-bridge`锛氬壀璐存澘鎵撳瓧銆佺粍鍚堥敭銆佺劍鐐?鏃跺簭銆佹帶鍒跺彴绐楀彛鐨勭壒娈婃儏鍐?
-宸查獙璇佺殑鍦烘櫙锛?
-- STM32CubeMX锛圝ava/SWT锛屾棤鎺т欢鏍戯級锛氱偣 `GENERATE CODE`銆佺偣鏃堕挓姹傝В鍣ㄥ璇濇
-- Keil uVision锛歚UV4.exe -b/-f` 涔嬪鐨勫浘褰㈡搷浣?- 璁颁簨鏈?/ 璧勬簮绠＄悊鍣?/ cmd锛氱湡瀹為紶鏍囩偣鍑?+ 鍓创鏉挎墦瀛?+ 绐楀彛鎴浘鍥炴墽
+## 0.1.2 - 2026-10-18 [reconstructed]
 
-宸茬煡闂锛?
-- 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
-- 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?
+Original text was lost to double-encoding; rebuilt from the git log and
+`REVIEW-NOTES-2026-10-18.md`.
 
-## 0.2.0 (2026-10-19)
+- **P0 `uia.py` crash**: `control_of()` no longer calls `child_window()` on a
+  `UIAWrapper` (every `find` / `click` died with
+  `'UIAWrapper' object has no attribute 'child_window'`); it walks ancestors and
+  matches, and `tree` indents by real depth.
+- **P1 physical click could hit another window**: `uia.py click --input` refuses
+  when the target is not foreground, exits 3, and explains; `--force` only after
+  the layering is confirmed.
+- **P1 HAL behaviour documented wrong**: `stm32f4-bringup` section 3b now says
+  HAL does not validate PLL frequencies; `HAL_RCC_OscConfig` returns
+  `HAL_TIMEOUT` after waiting for `PLLRDY`
+  (`stm32f4xx_hal_rcc.c:487`, not `HAL_ERROR`), plus the
+  `HCLK=168000000` cross-model trap in `.ioc`.
+- **P2 locator API**: `Get-Window -Like` really is wildcard-based (`-Regex`
+  switches to regex), added `Get-Window -Hwnd` and the `-Pattern` / `-Title`
+  aliases; `Assert-Window` accepts HWND, IntPtr and `Get-WindowList` rows, and
+  says what it expected.
+- **P2 capture contract**: `Get-WindowCapture` throws for a minimized window
+  (`-NoThrow` returns the status instead), default filenames carry the HWND, and
+  `Test-Occluded` uses random names and returns the real `WindowPng` / `ScreenPng`.
+- **P2 hard rules**: elevated (UAC) windows are unreachable through UIPI, screenshots
+  are privacy-sensitive, keep the scripts ASCII.
+- **Description de-duplication**: `windows-gui-control` became "function reference"
+  and `windows-screen-automation` owns the entry trigger, so the four skills no
+  longer overlap.
 
-- 每个技能新增 knowledge/ 经验库：lessons.md（生成物，<=40 行）+ ledger.json（计数与证据）。
-- 新增 scripts/lesson.ps1：dd / hit / miss / list / prune；命中每 3 次 +1 置信，矛盾连续 2 次 -1，降到 1 标 [REFUTED]；超过 40 条按置信/时效/命中淘汰。
-- 首批 20 条经验入库（gui.* / screen.* / uia.* / input.* / embed.*）。
+## 0.1.0 - 2026-10-18 [reconstructed]
+
+Original text was lost to double-encoding; rebuilt from the git log.
+
+- First release: four skills packaged from tasks that were verified end to end.
+  - `windows-gui-control`: `ui.ps1` (~19 KB, 25 functions) + `uia.py` (pywinauto bridge).
+  - `windows-screen-automation`: look -> click -> verify loop,
+    `Get-WindowCapture` occlusion capture, pixel-diff thresholds.
+  - `windows-uia-inspector`: UIA tree dump, locator priority, Java/SWT empty trees.
+  - `windows-input-bridge`: clipboard typing, chords, focus/timing, console quirks.
+- Scenarios verified: STM32CubeMX (Java/SWT, no control tree) - `GENERATE CODE`
+  and the clock-solver dialog; Keil uVision beyond `UV4.exe -b/-f`;
+  Notepad / Explorer / cmd - real mouse click + clipboard typing + capture replay.
+- Known issues at the time: minimized windows cannot be captured (the rect
+  degenerates to 158x26); a launcher PID is not the window PID (Win11 packaged
+  apps reuse instances), so `Get-WindowByPid` can return `$null` - `Assert-Window`
+  now fails loudly.

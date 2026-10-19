@@ -1,21 +1,26 @@
-# 技能索引（读这一页 = 知道有哪些技能可用）
+# BOOT.md — 这台机器 + 不许犯的错
 
-> 用法：新对话第一句只写 `@BOOT.md`，不用再跟任务。
-> 读完请回答一句「已知悉：4 个 Windows 技能 + 1 个 STM32 技能 + 2 个元规则技能」，然后等我派活。
+> 新对话里 `@BOOT.md` 读一次即可。技能清单**不写在这里**：DSH 每轮自动注入技能目录
+> （名字 + 描述），手工维护的副本必然漂移——这份文件的前一版就漂了：列了 7 个，实际 15 个，
+> 其中 1 个还根本加载不了。要用哪个，直接 `skill <name>`。
 
-## 技能清单
+## 机器环境
 
-| 技能名 | 什么时候加载 | 体积 |
-|---|---|---|
-| `windows-screen-automation` | 要操作任何 GUI：截图、找位置、点击、验证（**默认先加载这个**） | ~6 KB |
-| `windows-gui-control` | 需要函数签名/坑位时（`ui.ps1`、`pixelscan.ps1`、`uia.py` 的完整参考） | ~11 KB |
-| `windows-uia-inspector` | 目标是 Win32/MFC/Qt，有控件树可按名字点 | ~6 KB |
-| `windows-input-bridge` | 往输入框打字、按快捷键、鼠标三键 | ~6 KB |
-| `stm32f4-bringup` | Keil 编译/烧录、板子不亮、时钟配错 | ~7 KB |
-| `clarify-before-act` | 任务有歧义、不可逆、要花钱 | ~17 KB |
-| `mcp-on-demand` | 考虑装/开 MCP 服务器时 | ~4 KB |
+- Keil：`C:\Keil_v5\UV4\UV4.exe`（`-b` 编译、`-f` 烧录；判据看日志末尾 `0 Error(s)` / `Verify OK`）
+- CubeMX：`C:\Users\<用户>\AppData\Local\Programs\STM32CubeMX\STM32CubeMX.exe`（`-q gen.txt` 无界面）
+- 串口：**不要写死**。现查 `Get-CimInstance Win32_SerialPort` 或 `[IO.Ports.SerialPort]::GetPortNames()`
+  —— ST-Link VCP 只在探针插着时出现，拔掉后编号会让给蓝牙串口（本机现在只有 COM8/COM9）
+- 运行环境：Windows + PowerShell 5.1；Python 3.12.8 + **pywinauto 0.6.9 已装**（`uia.py` 开箱可用）
+- 脚本：全部纯 ASCII、无 BOM（`ui.ps1` 的 BOM 已去掉）；dot-source 前先 `Set-ExecutionPolicy -Scope Process Bypass`。`Add-Type` 的 here-string 里不要写 PowerShell 变量，否则会被当 C# 编译报错。
 
-规则：**一次只加载 1–2 个**（每个 1.5–3k token），别全加载。加载方式是调用 `skill` 工具，参数为技能名全称。
+## 技能装在哪（决定优先级）
+
+- 用户级 `%USERPROFILE%\.agents\skills\` —— 全局，rank 500
+- 工程级 `<项目根>\.agents\skills\` —— **优先于用户级**（rank 200）
+  - 项目根 = 最近含 `.git` 的祖先目录；没有 `.git` 就用当前工作目录
+  - 想让某个技能只对一个工程生效，放工程级即可，会压过用户级同名技能
+- SKILL.md 的 frontmatter 必须是合法 YAML：`description` 里出现 `: `（冒号+空格）要用引号包住，
+  否则该技能会被**静默丢弃**（不报错、不出现在目录里，`skill xxx` 报 unknown）
 
 ## 经验库（每个技能自带）
 
@@ -26,14 +31,6 @@
   - `hit` / `miss`：命中与矛盾；连续 2 次矛盾降一级，降到 1 标 `[REFUTED]`（保留但不采用）
   - `prune`：超过 40 条按置信/时效/命中淘汰
 - 写入触发只有三种：**同一坑踩两次 / 结果推翻假设 / 用户明确指教**
-
-## 机器环境（不含工程状态）
-
-- Keil：`C:\Keil_v5\UV4\UV4.exe`（`-b` 编译、`-f` 烧录，判据看日志末尾）
-- CubeMX：`C:\Users\<用户>\AppData\Local\Programs\STM32CubeMX\STM32CubeMX.exe`（`-q gen.txt`）
-- 串口：ST-Link VCP 通常 COM4 / 115200
-- 依赖：Windows + PowerShell 5.1；`uia.py` 需 `pywinauto`（可选）；脚本一律纯 ASCII
-- 技能安装目录：`%USERPROFILE%\.agents\skills\`（工作区内的 `.agents\skills` **不生效**）
 
 ## 三条硬规矩
 

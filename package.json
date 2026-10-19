@@ -1,52 +1,52 @@
 {
-  "name": "dsh-windows-gui-skills",
-  "version": "0.2.0",
-  "description": "Drive Windows GUI apps from DeepSeek Harness: full-screen and single-window screenshots (even when covered), real mouse clicks with pixel-verified feedback, clipboard typing that survives a Chinese IME, UI Automation lookups, and an STM32F4 build/flash bring-up checklist 鈥?packaged as five Agent Skills.",
-  "type": "module",
-  "main": "./lib/index.js",
-  "exports": {
-    ".": "./lib/index.js",
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "lib",
-    "skills",
-    "cordis.patch.yml",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE",
-    "icon.svg"
-  ],
-  "keywords": [
-    "dsh-plugin",
-    "deepseek-harness",
-    "agent-skill",
-    "windows",
-    "automation",
-    "screenshot",
-    "ui-automation",
-    "mouse",
-    "keyboard",
-    "rpa"
-  ],
-  "engines": {
-    "node": ">=22.19.0"
-  },
-  "os": [
-    "win32"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/wyw-yy/dsh-windows-gui-skills.git"
-  },
-  "homepage": "https://github.com/wyw-yy/dsh-windows-gui-skills#readme",
-  "bugs": {
-    "url": "https://github.com/wyw-yy/dsh-windows-gui-skills/issues"
-  },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  }
+    "name":  "dsh-windows-gui-skills",
+    "version":  "0.2.1",
+    "description":  "Windows GUI automation skills for DSH: screenshots, real mouse, clipboard typing, UIA locators, pixel localization, learned flyouts, and an STM32F4 bring-up guide.",
+    "type":  "module",
+    "main":  "./lib/index.js",
+    "exports":  {
+                    ".":  "./lib/index.js",
+                    "./package.json":  "./package.json"
+                },
+    "files":  [
+                  "lib",
+                  "skills",
+                  "cordis.patch.yml",
+                  "README.md",
+                  "CHANGELOG.md",
+                  "LICENSE",
+                  "icon.svg"
+              ],
+    "keywords":  [
+                     "dsh-plugin",
+                     "deepseek-harness",
+                     "agent-skill",
+                     "windows",
+                     "automation",
+                     "screenshot",
+                     "ui-automation",
+                     "mouse",
+                     "keyboard",
+                     "rpa"
+                 ],
+    "engines":  {
+                    "node":  "\u003e=22.19.0"
+                },
+    "os":  [
+               "win32"
+           ],
+    "license":  "MIT",
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/wyw-yy/dsh-windows-gui-skills.git"
+                   },
+    "homepage":  "https://github.com/wyw-yy/dsh-windows-gui-skills#readme",
+    "bugs":  {
+                 "url":  "https://github.com/wyw-yy/dsh-windows-gui-skills/issues"
+             },
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           }
+            }
 }
