@@ -2,6 +2,27 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.8 - 2026-10-19
+
+The docs broke their own rule. `BOOT.md` says "do not copy numbers in, they go
+stale", and two documents hardcoded a function count anyway: `README.md` said
+27, `windows-gui-control` said "30+", the installed file has 48 across the three
+dot-sourced scripts (31 + 8 + 9). Both numbers were wrong by the time anyone
+read them.
+
+- `README.md` skill table: "27 个函数" → names the three scripts that make up the
+  function set.
+- `windows-gui-control` "Use the installed scripts only": "30+ functions" → says
+  `ui.ps1` dot-sources `pixelscan.ps1` and `flyouts.ps1`, and that a count in any
+  document (this one included) must be re-derived with
+  `Select-String -Pattern '^function ' ui.ps1 | Measure-Object`.
+- Workspace `AGENTS.md` §四 rule 3: dropped "30+ functions" and "10 functions" for
+  the same reason; the stale-copy warning now names what is missing instead of
+  how many.
+
+No behaviour changed — scripts, skills and the flyout knowledge base are
+byte-identical to 0.2.7.
+
 ## 0.2.7 - 2026-10-19
 
 Independent verification of the installed channel (skill tool → SKILL.md → scripts)

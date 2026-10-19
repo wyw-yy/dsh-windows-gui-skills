@@ -64,7 +64,7 @@ $t="$env:TEMP\wgsk"; iwr https://github.com/wyw-yy/dsh-windows-gui-skills/archiv
 
 | 技能 | 管什么 | 典型触发 |
 |---|---|---|
-| `windows-gui-control` | 总入口：27 个函数、决策阶梯、硬规则、配方 | 「帮我点一下这个按钮」 |
+| `windows-gui-control` | 总入口：全量函数（`ui.ps1` + `pixelscan.ps1` + `flyouts.ps1`）、决策阶梯、硬规则、配方 | 「帮我点一下这个按钮」 |
 | `windows-screen-automation` | 看→判断→点→验证闭环；全屏/单窗口截图；像素差校验；失败重试 | 「截图看看现在什么状态」 |
 | `windows-uia-inspector` | UIA 控件树、按 Name/AutomationId 定位、语义点击、空树排查 | 「找到叫 OK 的按钮并点它」 |
 | `windows-input-bridge` | 剪贴板打字（治中文输入法）、组合键、鼠标三键、焦点与时序 | 「在这个输入框里填 336」 |

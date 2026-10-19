@@ -42,10 +42,13 @@ scripts/uia.py    pywinauto bridge: windows / tree / find / click / text / value
    each action. Re-query windows every time — handles are rebuilt on navigation.
 
 **Use the installed scripts only.** Load
-`$env:USERPROFILE\.agents\skills\windows-gui-control\scripts\ui.ps1` (30+
-functions). A workspace `tools\ui.ps1` is a stale copy — it may be missing
-`Get-WindowCapture`, `Invoke-VerifiedClick`, `Set-DpiAware`, `Test-Occluded`, and
-you will not notice until the one thing you need is absent.
+`$env:USERPROFILE\.agents\skills\windows-gui-control\scripts\ui.ps1` — it
+dot-sources `pixelscan.ps1` and `flyouts.ps1` next to it, so one line gives you
+the full function set. A workspace `tools\ui.ps1` is a stale copy — it may be
+missing `Get-WindowCapture`, `Invoke-VerifiedClick`, `Set-DpiAware`,
+`Test-Occluded`, and you will not notice until the one thing you need is absent.
+Do not trust a function count written in any document, including this one —
+count them in the loaded file: `Select-String -Pattern '^function ' ui.ps1 | Measure-Object`.
 
 ## Load it (once per shell process)
 
