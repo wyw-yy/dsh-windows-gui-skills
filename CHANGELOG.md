@@ -2,6 +2,22 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.7 - 2026-10-19
+
+Independent verification of the installed channel (skill tool → SKILL.md → scripts)
+found everything working and two stale claims left over from the fixes.
+
+- `BOOT.md`: the "one of them could not load at all" sentence was true when it was
+  written and is false now (all 8 skills load; the broken frontmatter was fixed in
+  `cbb525b`). Replaced with a dated historical note, keeping the "do not copy
+  numbers in here" rule intact.
+- `clarify-before-act` had no experience library at all. Seeded
+  `knowledge\ledger.json` + `lessons.md` with `ask.midtask.screen`: asking at task
+  start is not enough — announce before taking the screen, and stop the whole
+  automation if the user answers.
+- `BOOT.md` in the repo is now byte-identical to the workspace copy (the routing
+  table had been added to one side only).
+
 ## 0.2.6 - 2026-10-19
 
 Three small things that bite anyone who follows the docs literally.

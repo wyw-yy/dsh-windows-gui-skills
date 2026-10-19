@@ -1,0 +1,19 @@
+{
+    "skill":  "clarify-before-act",
+    "updated":  "2026-10-19 22:10",
+    "entries":  [
+                    {
+                        "key":  "ask.midtask.screen",
+                        "statement":  "Asking once at task start is not enough: before taking the screen, stealing focus or sending a message on the user\u0027s behalf, say it first (about 30 seconds, stop me if you are typing). If the user answers, stop the whole automation, not just the next click.",
+                        "scope":  "meta",
+                        "confidence":  3,
+                        "hits":  0,
+                        "misses":  0,
+                        "consecutive_misses":  0,
+                        "status":  "active",
+                        "evidence":  "twice stole foreground while the user was typing",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}
