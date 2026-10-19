@@ -188,6 +188,19 @@ returns those exact paths — do not assume a fixed filename, read `.WindowPng`.
 | `Find-UiElement -Window $w -Name/-AutomationId/-Type` | first matching live element |
 | `Invoke-ClickElement $el` | Invoke → SelectionItem → Toggle → coordinate fallback |
 | `Invoke-ClickByNameVerified -Window $w -Name "OK"` | find + click + verify |
+
+**Two different shapes, and only one has `.Handle`:**
+
+| You have | Handle is at | Notes |
+|---|---|---|
+| a row from `Get-WindowList` | `$row.Handle` (also `.Pid`, `.Name`) | plain object |
+| an element from `Get-Window -Like` / `Get-WindowByPid` | `$w.Current.NativeWindowHandle` | AutomationElement; **`$w.Handle` is `$null`/empty** |
+| anything else | `Get-Handle $w` | the functions use this internally; call it instead of reading a property |
+
+Measured: `(Get-Window -Like 'CubeMX').Handle` returned an empty string while
+`.Current.NativeWindowHandle` was `2097762`. Passing a raw HWND still works
+(`Get-Window -Hwnd n` returns a light object), so the safe pattern is
+`$h = Get-Handle (Get-Window -Like 'CubeMX')`.
 | `Invoke-VerifiedClick -Window $w -X -Y` | click, then poll pixels; returns `{Changed, Diff}` |
 | `Invoke-ClickWindow $w -FX .5 -FY .5` | click a fraction of the window |
 | `[Win32UI]::DblClick($x,$y)` / `::RightClick($x,$y)` | other buttons |
@@ -526,10 +539,10 @@ the region following to `770,650`; app closed -> `GONE` conf 0, stable.
 
 ## 经验库（自动维护）
 
-`knowledge\lessons.md` 是本技能的经验条目（<=40 行，加载技能时一并读）。
+`knowledge\lessons.md` 是本技能的经验条目（<=40 行）。**`skill` 工具只返回本 SKILL.md，不会带 lessons——动手前用 `read` 打开它一次**。
 判据：**换一个任务，这句话还用得上吗？** 工程参数、账号、一次性坐标不要写。
 
-- 命中（按它做并且成功）：`lesson.ps1 hit  -Skill <本技能> -Key <key>`
+- 命中（按它做并且成功）：`powershell -File "$env:USERPROFILE\.agents\skills\<本技能>\scripts\lesson.ps1" hit -Skill <本技能> -Key <key>`（每个技能自带一份，路径写全）
 - 矛盾（按它做失败）：`lesson.ps1 miss -Skill <本技能> -Key <key>`（连续 2 次降一级，降到 1 标 [REFUTED]，保留但不再采用）
 - 新增：只在“同一坑踩两次 / 结果推翻假设 / 用户明确指教”时
   `lesson.ps1 add -Skill <本技能> -Key <域>.<主题> -Text "<一句话规则>" -Confidence 3-5`

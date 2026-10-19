@@ -2,6 +2,25 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.6 - 2026-10-19
+
+Three small things that bite anyone who follows the docs literally.
+
+- `lesson.ps1` now ships **inside every skill** (`skills\<name>\scripts\lesson.ps1`)
+  instead of only under `windows-gui-control`. The five other skills told you to
+  run `lesson.ps1 hit -Skill <this skill>` with no path, and the file was not
+  there — a literal reader gets "not found". Each 经验库 block now also spells out
+  the full path under `$env:USERPROFILE\.agents\skills\<skill>\scripts\`.
+- The 经验库 block said lessons are read "together with the skill". They are not:
+  the `skill` tool returns SKILL.md only. Reworded to "`skill` does not carry it —
+  open `knowledge\lessons.md` with `read` before acting".
+- `Get-Window` and `Get-WindowList` do **not** return the same shape:
+  `Get-WindowList` rows have `.Handle/.Pid/.Name`; `Get-Window` returns an
+  `AutomationElement` whose `.Handle` is empty — the HWND lives at
+  `.Current.NativeWindowHandle`. Added a shape table plus the rule
+  `$h = Get-Handle (Get-Window -Like '...')`. Measured: `.Handle` empty vs
+  `.Current.NativeWindowHandle` = 2097762.
+
 ## 0.2.5 - 2026-10-19
 
 The skills were right but never loaded, because `AGENTS.md` is injected every
