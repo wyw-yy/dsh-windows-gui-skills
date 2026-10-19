@@ -1,4 +1,4 @@
-﻿# ui.ps1 - Windows GUI control for agents: screenshot, real mouse, UIA clicking.
+# ui.ps1 - Windows GUI control for agents: screenshot, real mouse, UIA clicking.
 # Load with:
 #   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 #   . "C:\Users\yang'yu\.agents\skills\windows-gui-control\scripts\ui.ps1"
