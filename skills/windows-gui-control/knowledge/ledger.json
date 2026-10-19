@@ -1,13 +1,13 @@
 {
     "skill":  "windows-gui-control",
-    "updated":  "2026-10-19 19:40",
+    "updated":  "2026-10-19 19:51",
     "entries":  [
                     {
                         "key":  "gui.handle.rebuild",
                         "statement":  "应用会销毁重建 HWND；点击前必须现查句柄与矩形，禁止跨调用缓存坐标。",
                         "scope":  "gui",
                         "confidence":  5,
-                        "hits":  3,
+                        "hits":  4,
                         "misses":  0,
                         "status":  "active",
                         "evidence":  "QQ 3 次、LCEDA 2 次",
@@ -54,8 +54,8 @@
                         "key":  "gui.button.moved",
                         "statement":  "换窗口宽度按钮位置会变（QQ 发送键 1340→1076）；每次从当前截图定位。",
                         "scope":  "gui",
-                        "confidence":  4,
-                        "hits":  2,
+                        "confidence":  5,
+                        "hits":  3,
                         "misses":  0,
                         "status":  "active",
                         "evidence":  "QQ 主面板紧凑/全屏两种布局",
@@ -66,11 +66,23 @@
                         "key":  "gui.verify.pixel",
                         "statement":  "像素差只证明重绘，不证明输入落进去；输入类动作要用产物验证（剪贴板、标签、新窗口）。",
                         "scope":  "gui",
-                        "confidence":  4,
-                        "hits":  2,
+                        "confidence":  5,
+                        "hits":  3,
                         "misses":  0,
                         "status":  "active",
                         "evidence":  "控制台 echo 假阴性",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.ps.varcase",
+                        "statement":  "PowerShell 变量名大小写不敏感：用 $L/$T 表示窗口左上角时，绝不能再用 $t/$s 当临时变量，否则 $T 被覆盖成字符串，坐标运算变成字符串拼接而失败。",
+                        "scope":  "gui",
+                        "confidence":  4,
+                        "hits":  0,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "QQ 分三条发送时 $t 覆盖 $T",
                         "added":  "2026-10-19",
                         "last_verified":  "2026-10-19"
                     }

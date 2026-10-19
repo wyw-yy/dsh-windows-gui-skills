@@ -5,9 +5,10 @@
 
 | key | conf | hits/misses | lesson |
 |---|---|---|---|
+| gui.button.moved | 5 | 3/0 | 换窗口宽度按钮位置会变（QQ 发送键 1340→1076）；每次从当前截图定位。 |
 | gui.dpi.aware | 5 | 2/0 | 进程内 SetProcessDPIAware 后点击坐标与屏幕像素 1:1；不做时 150% 缩放点偏 1.5 倍，表现为点了没反应。 |
 | gui.electron.paint | 5 | 3/0 | Electron/Chromium 窗口经 ShowWindow 显示后不绘制（黑/白）；只能让应用自己显示：托盘、任务栏按钮、应用内快捷键（QQ 主面板 Ctrl+Alt+Z）。 |
-| gui.handle.rebuild | 5 | 3/0 | 应用会销毁重建 HWND；点击前必须现查句柄与矩形，禁止跨调用缓存坐标。 |
-| gui.button.moved | 4 | 2/0 | 换窗口宽度按钮位置会变（QQ 发送键 1340→1076）；每次从当前截图定位。 |
+| gui.handle.rebuild | 5 | 4/0 | 应用会销毁重建 HWND；点击前必须现查句柄与矩形，禁止跨调用缓存坐标。 |
+| gui.verify.pixel | 5 | 3/0 | 像素差只证明重绘，不证明输入落进去；输入类动作要用产物验证（剪贴板、标签、新窗口）。 |
 | gui.popup.hwnd | 4 | 2/0 | 菜单/下拉/提示是独立 HWND；窗口截图看不到浮层，验证浮层要全屏图或枚举新窗口。 |
-| gui.verify.pixel | 4 | 2/0 | 像素差只证明重绘，不证明输入落进去；输入类动作要用产物验证（剪贴板、标签、新窗口）。 |
+| gui.ps.varcase | 4 | 0/0 | PowerShell 变量名大小写不敏感：用 $L/$T 表示窗口左上角时，绝不能再用 $t/$s 当临时变量，否则 $T 被覆盖成字符串，坐标运算变成字符串拼接而失败。 |
