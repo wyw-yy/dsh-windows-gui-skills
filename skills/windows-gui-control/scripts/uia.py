@@ -30,6 +30,7 @@ import argparse
 import ctypes
 import json
 import sys
+import time
 
 try:
     from pywinauto import Desktop
@@ -128,13 +129,24 @@ def iter_windows():
             continue
 
 
-def find_window(title=None, handle=None):
-    """Return a resolved wrapper (never a WindowSpecification).
+def find_window(title=None, handle=None, timeout=1.0):
+    """Poll for a window until *timeout* seconds elapse, then give up.
 
     pywinauto's Desktop().window(...) returns a *spec*; only after .exists() /
     .wrapper_object() do you get a wrapper with .children(), .descendants() and
     .handle. Mixing the two is what made every control lookup fail before.
     """
+    deadline = time.time() + max(0.0, timeout)
+    while True:
+        w = _find_window_once(title, handle)
+        if w is not None:
+            return w
+        if time.time() >= deadline:
+            return None
+        time.sleep(0.15)
+
+
+def _find_window_once(title=None, handle=None):
     desktop = Desktop(backend="uia")
     if handle:
         spec = desktop.window(handle=handle)
@@ -262,7 +274,7 @@ def cmd_windows(_a):
 
 
 def cmd_tree(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
@@ -293,7 +305,7 @@ def cmd_tree(a):
 
 
 def cmd_find(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
@@ -313,7 +325,7 @@ def cmd_find(a):
 
 
 def cmd_click(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
@@ -358,7 +370,7 @@ def cmd_click(a):
 
 
 def cmd_text(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
@@ -376,7 +388,7 @@ def cmd_text(a):
 
 
 def cmd_value(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2
@@ -397,7 +409,7 @@ def cmd_value(a):
 
 
 def cmd_focus(a):
-    w = find_window(a.title, a.handle)
+    w = find_window(a.title, a.handle, getattr(a, "timeout", 1.0))
     if w is None:
         print_not_found(a.title, a.handle)
         return 2

@@ -79,7 +79,7 @@ Invoke-ClickWindow $w -FX 0.5 -FY 0.5      # centre, fraction of window
 
 ```powershell
 Focus-Window $w                       # ShowWindow(SW_RESTORE) + SetForegroundWindow
-[Win32UI]::GetForegroundWindow()      # verify, don't assume
+[Win32Capture]::GetForegroundWindow()      # verify, don't assume
 ```
 
 - `Focus-Window` restores a minimized window; you cannot capture or click a

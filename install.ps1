@@ -1,10 +1,12 @@
-﻿# Install the bundled Agent Skills into the user-level skill folder.
+# Install the bundled Agent Skills into the user-level skill folder.
 # No npm, no DSH plugin: just files in %USERPROFILE%\.agents\skills\.
 #
 #   powershell -ExecutionPolicy Bypass -File install.ps1
 #
-# Re-running upgrades in place. Start a NEW agent session afterwards so the
-# skill catalog is reloaded.
+# Re-running upgrades the skills and KEEPS your local knowledge bases: the
+# per-skill `data\` and `knowledge\` folders are copied aside before the old
+# folder is replaced and put back afterwards. Start a NEW agent session
+# afterwards so the skill catalog is reloaded.
 
 $ErrorActionPreference = 'Stop'
 
@@ -26,8 +28,27 @@ try {
     New-Item -ItemType Directory -Path $dest -Force | Out-Null
     Get-ChildItem -Path $src -Directory | ForEach-Object {
         $target = Join-Path $dest $_.Name
-        if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+        # `data\` and `knowledge\` are gitignored user state: back them up before
+        # replacing the folder, then restore them on top of the new version.
+        $keep = @()
+        if (Test-Path $target) {
+            foreach ($sub in @('data', 'knowledge')) {
+                $p = Join-Path $target $sub
+                if (Test-Path $p) {
+                    $bak = Join-Path $tmp ("keep_" + $_.Name + "_" + $sub)
+                    Copy-Item -Path $p -Destination $bak -Recurse -Force
+                    $keep += [pscustomobject]@{ Rel = $sub; Bak = $bak }
+                }
+            }
+            Remove-Item $target -Recurse -Force
+        }
         Copy-Item -Path $_.FullName -Destination $target -Recurse -Force
+        foreach ($k in $keep) {
+            $p = Join-Path $target $k.Rel
+            if (Test-Path $p) { Remove-Item $p -Recurse -Force }
+            Copy-Item -Path $k.Bak -Destination $p -Recurse -Force
+            Write-Host ("  kept user state: " + $_.Name + "\" + $k.Rel)
+        }
         Write-Host ("  installed " + $_.Name)
     }
     Write-Host ""

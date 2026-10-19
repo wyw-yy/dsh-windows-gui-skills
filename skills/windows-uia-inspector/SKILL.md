@@ -89,7 +89,7 @@ python $py value --title "..." --auto-id 1234
 
 `find` prints
 `{"class":"Button","text":"新建","auto_id":"","rect":[20,134,148,201],"center":[84,167],"enabled":true}`
-— enough to act without an image. Exit codes: `0` ok, `2` not found, `1` error.
+— enough to act without an image. Exit codes: `0` ok, `2` not found, `3` refused (target not foreground), `4` unusable (minimized / off-screen), `1` error.
 The script forces UTF-8 on stdout; without that, CJK titles crash on a GBK console.
 
 ## Empty tree: triage before giving up

@@ -152,7 +152,7 @@ function Invoke-Flyout {
   $fast = $false
   if ($entry -and [int]$entry.confidence -ge 2 -and -not $ForceSweep) { $fast = $true }
 
-  $verdicts = @(); $lastRegion = $null; $lastPeak = $null
+  $verdicts = @(); $lastRegion = $null; $lastPeak = $null; $gonePenalised = $false
   for ($a = 1; $a -le $Attempts; $a++) {
     # Passive look first: if the UI is already on screen, we do not need to hover.
     $pre = Get-TransientRegion -Frames 4 -IntervalMs 60 -Threshold $Threshold
@@ -188,9 +188,18 @@ function Invoke-Flyout {
     $verdicts += $v
     $trigger = [pscustomobject]@{ x = $tx; y = $ty }
 
-    if (-not $entry -or $v -in @('LEARNED', 'MOVED') -or ($fast -and $v -ne 'MATCH' -and $a -lt $Attempts)) {
-      $entry = Add-FlyoutObservation -Knowledge $kb -Key $key -Trigger $trigger -Region $observed -Verdict $v -Attempt $a
-    } elseif ($entry) {
+    # Write gate: a single contradictory observation must NOT rewrite the entry.
+    # LEARNED writes once, MATCH confirms every time, MOVED / DIFFERENT_UI need
+    # two consecutive identical verdicts, and GONE costs at most -1 per call
+    # (otherwise 3 attempts at a closed app drop confidence by 3).
+    $prev = if ($verdicts.Count -ge 2) { $verdicts[$verdicts.Count - 2] } else { $null }
+    $shouldWrite = $false
+    if (-not $entry) { $shouldWrite = $true }
+    elseif ($v -eq 'MATCH') { $shouldWrite = $true }
+    elseif ($v -eq 'MOVED' -and $prev -eq 'MOVED') { $shouldWrite = $true }
+    elseif ($v -eq 'DIFFERENT_UI' -and $prev -eq 'DIFFERENT_UI') { $shouldWrite = $true }
+    elseif ($v -eq 'GONE' -and -not $gonePenalised) { $shouldWrite = $true; $gonePenalised = $true }
+    if ($shouldWrite) {
       $entry = Add-FlyoutObservation -Knowledge $kb -Key $key -Trigger $trigger -Region $observed -Verdict $v -Attempt $a
     }
 

@@ -45,7 +45,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
 `Get-WindowCapture` is the one you want for Java/SWT apps, dialogs behind other
 windows, and for reading text without dragging the whole desktop into context.
-For a minimized window it returns `Status=TOOSMALL 158x26 iconic=True` — restore
+For a minimized window it throws (`cannot capture: TOOSMALL ... iconic=True`); pass `-NoThrow` if you want the status object, then restore
 first (`Focus-Window $w`), capture again.
 
 ## Coordinate scale (the #1 silent bug)
@@ -65,19 +65,19 @@ rather than an obvious failure.
 ## Verification that costs nothing
 
 ```powershell
-$r = Invoke-VerifiedClick -Window $w -X 1858 -Y 304 -WaitMs 2500
+$r = Invoke-VerifiedClick -Window $w -X 1858 -Y 304 -TimeoutMs 2500
 $r.Changed   # True/False
 $r.Diff      # 0..255 mean abs channel diff over the window rect
 ```
 
-Thresholds that held up in practice:
+Thresholds used by the code (`Test-Occluded` flags occlusion above `Diff > 20`; `Invoke-VerifiedClick` sets `Changed` above `Diff > 2`):
 
 - `< 1.0` → nothing changed (same frame, or a blinking caret only).
 - `1 – 8` → a caret/cursor blink or hover highlight; **not** proof of an action.
 - `> 15` → real change: dialog opened, page switched, panel redrew.
 - `> 100` → completely different content.
 
-`Changed` is just `Diff > 3`. After clicking "build", don't trust `Changed` — the
+`Changed` is just `Diff > 2`. After clicking "build", don't trust `Changed` — the
 strongest cheap signal is an artifact: a new `.hex`, a new log line, a new window
 title. Prefer file/window/title evidence over pixel evidence whenever it exists.
 
@@ -126,7 +126,7 @@ and screenshot the screen instead.
 $w = Get-Window -Like 'STM32CubeMX'
 Focus-Window $w
 $before = Get-WindowCapture -Window $w -Path 'C:\tmp\before.png'
-Invoke-VerifiedClick -Window $w -X 1858 -Y 304 -WaitMs 3000 | Format-List
+Invoke-VerifiedClick -Window $w -X 1858 -Y 304 -TimeoutMs 3000 | Format-List
 Test-Path 'C:\work\proj\MDK-ARM'      # artifact beats pixels
 Get-ChildItem 'C:\work\proj' | Select-Object Name, LastWriteTime
 ```
