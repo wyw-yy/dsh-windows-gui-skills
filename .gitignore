@@ -11,5 +11,6 @@ __pycache__/
 
 REVIEW-NOTES*.md
 
-# per-machine learning data
+# per-machine learning data - never tracked, never packaged
 skills/windows-gui-control/data/
+skills/clarify-before-act/data/

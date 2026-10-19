@@ -1,6 +1,6 @@
 # dsh-windows-gui-skills
 
-**在 DeepSeek Harness 里操作 Windows 图形界面**的五个 Agent Skill：截图（含被遮挡的窗口）、真实鼠标点击（带像素级回执）、走剪贴板打字（中文输入法不会吃字）、UI Automation 语义定位，以及 STM32F4 的编译/烧录与「烧进去不亮」排查。
+**在 DeepSeek Harness 里操作 Windows 图形界面**的六个 Agent Skill：截图（含被遮挡的窗口）、真实鼠标点击（带像素级回执）、走剪贴板打字（中文输入法不会吃字）、UI Automation 语义定位、动手前先问清，以及 STM32F4 的编译/烧录与「烧进去不亮」排查。
 
 纯 PowerShell + 系统自带 .NET，**零依赖、零后台服务、零网络请求**。装完之后对 agent 说一句「截个图看看」或「点一下 GENERATE CODE」就能用。
 
@@ -25,23 +25,23 @@ dsh plugin --profile <profile> add dsh-windows-gui-skills
 把 `<profile>` 换成你在用的 profile（命令行看 `dsh --help`；桌面版通常是 `desktop`，纯净 Web 版是 `web`）。
 安装命令顺便会把本包登记进该 profile 的 `dsh.profile.bundles`，不需要手动改配置。
 
-装完**开一个新会话**（技能列表在会话启动时扫描），检查 skill 目录里是否出现 `windows-gui-control` 等四项。
+装完**开一个新会话**（技能列表在会话启动时扫描），检查 skill 目录里是否出现 `windows-gui-control` 等六项。
 
 升级 / 卸载：
 
 ```bash
-dsh plugin --profile <profile> add dsh-windows-gui-skills@0.1.0     # 升级到指定版本
+dsh plugin --profile <profile> add dsh-windows-gui-skills@0.2.3     # 升级到指定版本
 dsh plugin --profile <profile> remove dsh-windows-gui-skills        # 卸载
 ```
 
 没有 npm 网络时，可以装本地 tarball：
 
 ```bash
-npm pack                                  # 得到 dsh-windows-gui-skills-0.1.0.tgz
-dsh plugin --profile <profile> add /abs/path/dsh-windows-gui-skills-0.1.0.tgz
+npm pack                                  # 得到 dsh-windows-gui-skills-0.2.3.tgz
+dsh plugin --profile <profile> add /abs/path/dsh-windows-gui-skills-0.2.3.tgz
 ```
 
-不想装插件也可以只用技能：把 `skills/` 下五个目录拷进 `%USERPROFILE%\.agents\skills\`，效果一样（DSH 会从用户级技能目录加载）。
+不想装插件也可以只用技能：把 `skills/` 下六个目录拷进 `%USERPROFILE%\.agents\skills\`，效果一样（DSH 会从用户级技能目录加载）。
 
 ### 一条命令装技能（不需要 npm）
 
@@ -60,7 +60,7 @@ $t="$env:TEMP\wgsk"; iwr https://github.com/wyw-yy/dsh-windows-gui-skills/archiv
 装完开新会话即可。注意 `dsh plugin add github:...` **不行**——DSH 的插件安装走 pnpm/npm 源，不认 git 源（实测装完不登记 bundle、也没有 skills 目录）。
 
 
-## 五个技能
+## 六个技能
 
 | 技能 | 管什么 | 典型触发 |
 |---|---|---|
@@ -69,6 +69,7 @@ $t="$env:TEMP\wgsk"; iwr https://github.com/wyw-yy/dsh-windows-gui-skills/archiv
 | `windows-uia-inspector` | UIA 控件树、按 Name/AutomationId 定位、语义点击、空树排查 | 「找到叫 OK 的按钮并点它」 |
 | `windows-input-bridge` | 剪贴板打字（治中文输入法）、组合键、鼠标三键、焦点与时序 | 「在这个输入框里填 336」 |
 | `stm32f4-bringup` | Keil 命令行编译/烧录、烧进去不亮的排查顺序、PLL 合法性算术、见证成功的四个条件 | 「烧录成功了但灯不亮」 |
+| `clarify-before-act` | 动手前先问：什么该问、问几个、怎么问、什么时候别问；带 `clarify.ps1` 记录问了之后是好是坏 | 「先问我要做什么再动手」 |
 
 每个技能都带 `SKILL.md`；`windows-gui-control` 还带两个可直接调用的脚本：
 

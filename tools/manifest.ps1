@@ -30,7 +30,9 @@ $manifest = Join-Path $Root 'MANIFEST.txt'
 $excludeDir = @('.git', 'node_modules', '__pycache__', 'knowledge', 'data')
 # Repo-only files: they never ship, so listing them in MANIFEST.txt made a
 # delivery folder report "FILE GONE" for files it was never supposed to have.
-$excludeFile = @('.gitignore', 'NOTE.md', 'REVIEW-NOTES-*.md', 'REVIEW-RESPONSE-*.md', 'REVIEW-REQUEST-*.md')
+# The `*` sits directly after the noun so both spellings match: a bare
+# `REVIEW-REQUEST.md` and a numbered `REVIEW-REQUEST-3.md`.
+$excludeFile = @('.gitignore', '.npmignore', 'NOTE*.md', 'REVIEW-NOTES*.md', 'REVIEW-RESPONSE*.md', 'REVIEW-REQUEST*.md')
 
 function Get-Files {
     Get-ChildItem -Path $Root -Recurse -File -Force |

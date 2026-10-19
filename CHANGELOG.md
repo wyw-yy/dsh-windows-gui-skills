@@ -2,6 +2,44 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.3 - 2026-10-19
+
+Round-5 review fixes (`REVIEW-NOTES-5.md`).
+
+- `skills/clarify-before-act/data/clarify-log.json` no longer ships. It held
+  this machine's real records ("send button at 1340,916", outcome `wrong`), so
+  a fresh install copied them into someone else's profile. The file is now
+  untracked, deleted from the repo tree and gitignored; `clarify.ps1` recreates
+  it as `[]` on first use.
+- `skills/clarify-before-act/references/clarify-knowledge.md` replaces
+  `data/clarify-knowledge.md`: curated advice ships, `data\` is per-machine
+  state only, so `install.ps1` carrying `data\` over can no longer freeze an
+  old knowledge file in place.
+- `.npmignore`: `files` in package.json whitelists the whole `skills/`
+  directory and npm applies neither `.gitignore` nor file-level `.npmignore`
+  rules on top of it, so per-machine `data/` folders are excluded as whole
+  directories. Without this, `npm pack` still shipped the log.
+- `install.ps1`: only genuinely per-machine paths survive an upgrade -
+  `data\` + `knowledge\` for `windows-gui-control`, `knowledge\` for the rest,
+  `data\clarify-log.json` for `clarify-before-act`. The whole `data\` folder
+  used to be copied over every time.
+- `install.ps1`: the staging `.new-*` folder and the `.bak-*` backup are now
+  removed in a per-skill `finally`, not only on the happy path; a backup that
+  cannot be deleted is reported instead of silently leaking.
+- `install.ps1`: `-Source` and the downloaded archive are checked against the
+  package's own `MANIFEST.txt` before anything is installed.
+- `tools/manifest.ps1`: repo-only patterns are `NOTE*.md`, `REVIEW-NOTES*.md`,
+  `REVIEW-RESPONSE*.md`, `REVIEW-REQUEST*.md`, so a bare `REVIEW-REQUEST.md` is
+  excluded the same way `REVIEW-REQUEST-3.md` already was; `.npmignore` is
+  excluded too. MANIFEST is 26 files.
+- `lib/index.js`: `SKILL_NAMES` and the module comment list six skills -
+  `clarify-before-act` was missing.
+- `README.md`: six skills (heading, install note, table row for
+  `clarify-before-act`), and the npm-pack example uses the current version.
+- `BOOT.md`: the workspace copy that `@BOOT.md` actually reads still carried
+  the "actual 15 skills" sentence; it now matches the package copy
+  (`B17C95C7...`, byte-identical).
+
 ## 0.2.2 - 2026-10-19
 
 Round-4 review fixes (`REVIEW-NOTES-4.md`).

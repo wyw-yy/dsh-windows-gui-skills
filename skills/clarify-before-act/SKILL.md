@@ -124,10 +124,13 @@ The skill keeps a small local memory of *how asking went*, so the same mistake i
 It is **evidence, never a rule** — it never blocks work and never overrides the current thread.
 
 ```
-scripts\clarify.ps1        # Add-ClarifyRecord / Get-ClarifyStats / Get-ClarifyAdvice
-data\clarify-log.json      # append-only records, last 500 kept
-data\clarify-knowledge.md  # hand-written "worth asking vs not" table by domain
+scripts\clarify.ps1                 # Add-ClarifyRecord / Get-ClarifyStats / Get-ClarifyAdvice
+data\clarify-log.json               # append-only records, last 500 kept - per-machine, never shipped
+references\clarify-knowledge.md     # hand-written "worth asking vs not" table by domain
 ```
+
+`data\clarify-log.json` is created as `[]` on first use and is deliberately kept
+out of the package: what this machine asked is nobody else's history.
 
 Load it (each PowerShell call is a new process):
 

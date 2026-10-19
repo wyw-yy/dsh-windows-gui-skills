@@ -1,7 +1,7 @@
 {
     "name":  "dsh-windows-gui-skills",
-    "version":  "0.2.2",
-    "description":  "Windows GUI automation skills for DSH: screenshots, real mouse, clipboard typing, UIA locators, pixel localization, learned flyouts, and an STM32F4 bring-up guide.",
+    "version":  "0.2.3",
+    "description":  "Windows GUI automation skills for DSH: screenshots, real mouse, clipboard typing, UIA locators, pixel localization, learned flyouts, an ask-first policy, and an STM32F4 bring-up guide.",
     "type":  "module",
     "main":  "./lib/index.js",
     "exports":  {
