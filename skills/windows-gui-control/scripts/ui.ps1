@@ -560,7 +560,7 @@ function Invoke-ClickByNameVerified {
 # --- Make this shell process DPI-aware as soon as the file is dot-sourced. ---
 # Without it, at 150% scale the screen reports 1707x1067 but captures are
 # 2560x1600, so every Click(x,y) lands at (x*1.5, y*1.5).
-try { Set-DpiAware } catch { }
+try { $null = Set-DpiAware } catch { }
 
 # Load the pixel-localization helpers living next to this file.
 if ($PSScriptRoot) {

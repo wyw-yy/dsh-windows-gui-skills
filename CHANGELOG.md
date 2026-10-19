@@ -2,6 +2,28 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.2 - 2026-10-19
+
+Round-4 review fixes (`REVIEW-NOTES-4.md`).
+
+- `tools/manifest.ps1`: `-AllowExtra` no longer downgrades a missing file. A file
+  listed in MANIFEST.txt but absent on disk is always `FILE GONE` + exit 1; the
+  switch only excuses files that are present but not listed (NOTE.md, review
+  notes). Regression test: delete `skills\windows-input-bridge\SKILL.md` ->
+  `FILE GONE`, exit 1, even with `-AllowExtra`.
+- `tools/manifest.ps1`: repo-only files (`.gitignore`, `REVIEW-*.md`, `NOTE.md`)
+  are no longer written into MANIFEST.txt, so a delivery folder can contain every
+  listed file instead of silently missing repo-only ones. MANIFEST now 25 files.
+- `install.ps1`: copy into a staging folder, carry `data\` / `knowledge\` over,
+  then swap by rename, with restore on failure. The old order deleted the
+  installed skill first and had no rollback.
+- `ui.ps1`: dot-sourcing no longer writes objects to the output stream
+  (`$null = Set-DpiAware`) - it used to print a `Width Height` table.
+- `pixelscan.ps1`: the two `Add-Type` blocks use single-quoted here-strings
+  (`@' ... '@`), matching the "no interpolation" rule in BOOT.md.
+- `BOOT.md`: dropped the drifting "actual 15 skills" number.
+- `CHANGELOG.md`: the 0.2.1 entry pointed at a `tools/verify_manifest.ps1` that
+  does not exist; it is `tools/manifest.ps1`.
 ## 0.2.1 - 2026-10-19
 
 Round-3 review fixes (`REVIEW-NOTES-3.md`, deepPCB workspace).
@@ -23,7 +45,7 @@ Round-3 review fixes (`REVIEW-NOTES-3.md`, deepPCB workspace).
 - `tools/check_fm.py`: `--root <dir>` so it can validate the shipped package,
   not just the installed copy. Prints a per-file verdict and exits 1 on failure.
 - `MANIFEST.txt` is now generated with line endings normalised to LF before
-  hashing, and `tools/verify_manifest.ps1` does the same when it checks, so a
+  hashing, and `tools/manifest.ps1 -Mode verify` does the same when it checks, so a
   CRLF checkout no longer reports a false mismatch.
 - `CHANGELOG.md`: the 0.1.0-0.1.3 sections were double-encoded mojibake with
   replacement characters (information was already lost). They are rewritten

@@ -46,29 +46,41 @@ try {
 
     New-Item -ItemType Directory -Path $dest -Force | Out-Null
     Get-ChildItem -Path $src -Directory | ForEach-Object {
-        $target = Join-Path $dest $_.Name
-        # `data\` and `knowledge\` are gitignored user state: back them up before
-        # replacing the folder, then restore them on top of the new version.
-        $keep = @()
+        $name = $_.Name
+        $target = Join-Path $dest $name
+        $tag = [guid]::NewGuid().ToString('N').Substring(0, 6)
+        $stage = Join-Path $dest ('.new-' + $name + '-' + $tag)
+        $backup = Join-Path $dest ('.bak-' + $name + '-' + $tag)
+
+        # Build the new copy in a staging folder first. The previous version
+        # deleted the installed skill before copying, so a failed copy (disk
+        # full, locked file, Ctrl+C) left nothing behind and there was no way
+        # back. Now the old folder is only renamed after the copy succeeded.
+        Copy-Item -Path $_.FullName -Destination $stage -Recurse -Force
+
+        # `data\` and `knowledge\` are gitignored user state: carry them over
+        # from the installed skill on top of the fresh copy.
         if (Test-Path $target) {
             foreach ($sub in @('data', 'knowledge')) {
                 $p = Join-Path $target $sub
                 if (Test-Path $p) {
-                    $bak = Join-Path $tmp ("keep_" + $_.Name + "_" + $sub)
-                    Copy-Item -Path $p -Destination $bak -Recurse -Force
-                    $keep += [pscustomobject]@{ Rel = $sub; Bak = $bak }
+                    $s = Join-Path $stage $sub
+                    if (Test-Path $s) { Remove-Item $s -Recurse -Force }
+                    Copy-Item -Path $p -Destination $s -Recurse -Force
+                    Write-Host ("  kept user state: " + $name + "\" + $sub)
                 }
             }
-            Remove-Item $target -Recurse -Force
+            Rename-Item -Path $target -NewName (Split-Path $backup -Leaf)
         }
-        Copy-Item -Path $_.FullName -Destination $target -Recurse -Force
-        foreach ($k in $keep) {
-            $p = Join-Path $target $k.Rel
-            if (Test-Path $p) { Remove-Item $p -Recurse -Force }
-            Copy-Item -Path $k.Bak -Destination $p -Recurse -Force
-            Write-Host ("  kept user state: " + $_.Name + "\" + $k.Rel)
+        try {
+            Rename-Item -Path $stage -NewName $name
+        } catch {
+            # Put the previous version back before surfacing the error.
+            if (Test-Path $backup) { Rename-Item -Path $backup -NewName $name }
+            throw
         }
-        Write-Host ("  installed " + $_.Name)
+        if (Test-Path $backup) { Remove-Item $backup -Recurse -Force -ErrorAction SilentlyContinue }
+        Write-Host ("  installed " + $name)
     }
     Write-Host ""
     Write-Host "done -> $dest"

@@ -28,6 +28,9 @@ $Root = (Resolve-Path $Root).Path
 $manifest = Join-Path $Root 'MANIFEST.txt'
 
 $excludeDir = @('.git', 'node_modules', '__pycache__', 'knowledge', 'data')
+# Repo-only files: they never ship, so listing them in MANIFEST.txt made a
+# delivery folder report "FILE GONE" for files it was never supposed to have.
+$excludeFile = @('.gitignore', 'NOTE.md', 'REVIEW-NOTES-*.md', 'REVIEW-RESPONSE-*.md', 'REVIEW-REQUEST-*.md')
 
 function Get-Files {
     Get-ChildItem -Path $Root -Recurse -File -Force |
@@ -38,7 +41,11 @@ function Get-Files {
             foreach ($p in $parts[0..([math]::Max(0, $parts.Count - 2))]) {
                 if ($excludeDir -contains $p) { $bad = $true }
             }
-            (-not $bad) -and ($rel -ne 'MANIFEST.txt')
+            if ($bad -or ($rel -eq 'MANIFEST.txt')) { return $false }
+            foreach ($pat in $excludeFile) {
+                if ($_.Name -like $pat) { return $false }
+            }
+            return $true
         } |
         Sort-Object FullName
 }
@@ -86,9 +93,11 @@ foreach ($f in Get-Files) {
     if ($got -ne $want[$rel]) { Write-Output ("  MISMATCH  " + $rel); $bad++ }
 }
 foreach ($k in $want.Keys) {
+    # A file listed in the manifest but missing on disk is ALWAYS a failure:
+    # -AllowExtra only excuses files that are present but not listed (NOTE.md,
+    # review notes), never a hole in the package.
     if (-not (Test-Path (Join-Path $Root ($k -replace '/', '\')))) {
-        if ($AllowExtra) { Write-Output ("  absent (ignored)  " + $k) }
-        else { Write-Output ("  FILE GONE  " + $k); $bad++ }
+        Write-Output ("  FILE GONE  " + $k); $bad++
     }
 }
 Write-Output ("checked " + $checked + " files, " + $bad + " problem(s)")

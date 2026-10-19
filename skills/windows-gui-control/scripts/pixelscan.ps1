@@ -211,7 +211,7 @@ function Get-ChangeMask {
 
 # Fast whole-image mask writer. GetPixel over 4 MP takes ~10 s; Marshal.Copy ~30 ms.
 if (-not ('PixelMask' -as [type])) {
-Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -270,7 +270,7 @@ public class PixelMask {
     }
   }
 }
-"@
+'@
 }
 
 # Crop a template out of a screenshot (used to build locators).
@@ -395,7 +395,7 @@ function Test-HoverPopup {
 #   A. local pixels - only a box of Radius around the cursor is compared
 #   B. new top-level windows that appeared during the burst (tooltip/flyout HWNDs)
 if (-not ('FlyWin' -as [type])) {
-Add-Type -TypeDefinition @"
+Add-Type -TypeDefinition @'
 using System;
 using System.Text;
 using System.Collections.Generic;
@@ -425,7 +425,7 @@ public class FlyWin {
     return list;
   }
 }
-"@
+'@
 }
 
 function Capture-HoverFlyout {
