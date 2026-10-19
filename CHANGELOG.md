@@ -2,6 +2,34 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.4 - 2026-10-19
+
+Fixes from using the skills on a real CubeMX session that failed three times
+(`F401_BUZZER`). The skills were correct but did not fire, and two gaps made a
+recoverable mistake look like a hang.
+
+- `stm32f4-bringup` description now carries the setup-side triggers that were
+  missing — 用 CubeMX 新建工程 / 生成 Keil 工程 / 用 CubeMX + Keil 做个 xxx /
+  .ioc 需要能生成代码 / 批处理卡住. Previously it only matched "the LED is
+  dark", so a request to *create* a project never loaded it.
+- `stm32f4-bringup` §5: the sandbox trap (no write access to
+  `%USERPROFILE%\.stm32cubemx\` means `javaw` exits silently, the log mtime
+  freezes, and the launcher's exit code is already 0) and the fact that CubeMX
+  migration prompts are self-drawn Swing panels, not HWNDs.
+- `windows-gui-control`: new "Read this first" block at the top — decision ladder
+  in one line per rung (it used to sit 57 lines down), sandbox behaviour, GUI
+  process lifetime, and the rule to load only the installed `ui.ps1`.
+- `windows-screen-automation`: the same three environment traps, before the loop.
+- `windows-uia-inspector`: SWT modals are often drawn inside the main window, so
+  `EnumWindows`-based "wait for the dialog" always times out.
+- `windows-input-bridge` + `ui.ps1`: `Get-UserIdleSeconds` (GetLastInputInfo).
+  "Don't steal the input" now has a number — idle must exceed 2 s — instead of
+  relying on good intentions.
+- `clarify-before-act`: mid-task template for taking the screen, because asking
+  only at task start does not cover the second and third focus steal.
+- Four new lessons seeded: `gui.sandbox.silent`, `gui.process.lifecycle`,
+  `gui.local.copy.drift`, `embed.cubemx.byebye`.
+
 ## 0.2.3 - 2026-10-19
 
 Round-5 review fixes (`REVIEW-NOTES-5.md`).

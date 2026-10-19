@@ -23,6 +23,30 @@ scripts/ui.ps1    screenshot, occluded-window capture, real mouse, UIA tree,
 scripts/uia.py    pywinauto bridge: windows / tree / find / click / text / value
 ```
 
+## Read this first (three things that cost a whole session each)
+
+1. **Decision ladder, in one line per rung** — full version at
+   [Decision ladder](#decision-ladder--always-start-at-the-top):
+   CLI/file → UIA semantic → window capture (PrintWindow) → full-screen image →
+   coordinate click with verification. Start at the top; only fall through when
+   the rung above genuinely cannot express the action.
+2. **Sandbox beats you silently.** A desktop program that writes under
+   `%USERPROFILE%` (CubeMX, IDE caches, plugin loaders) cannot start under
+   `workspace-write`: it exits in seconds, writes nothing, and reports nothing.
+   Symptom: log file mtime does not move, no new process. Fix: get write access
+   to the home directory (ask the user), then run once — do not retry.
+3. **A GUI started by `pwsh` dies when that call returns.** `Start-Process` alone
+   is not enough if the parent shell is torn down with the tool call. Keep it
+   alive deliberately: launch it inside a background job, or a detached
+   `Start-Process` whose own process tree you then re-discover by PID before
+   each action. Re-query windows every time — handles are rebuilt on navigation.
+
+**Use the installed scripts only.** Load
+`$env:USERPROFILE\.agents\skills\windows-gui-control\scripts\ui.ps1` (30+
+functions). A workspace `tools\ui.ps1` is a stale copy — it may be missing
+`Get-WindowCapture`, `Invoke-VerifiedClick`, `Set-DpiAware`, `Test-Occluded`, and
+you will not notice until the one thing you need is absent.
+
 ## Load it (once per shell process)
 
 ```powershell

@@ -1,6 +1,6 @@
 ---
 name: stm32f4-bringup
-description: Get an STM32F4 board from "it flashed fine but the LED is dark" to a verified blink, using the Keil command line (UV4 -b / -f) and CubeMX-generated projects. Covers the clock-config traps that silently park the MCU in Error_Handler, LED polarity and pin-mapping checks, and the exact log markers that prove a build or a flash really succeeded. Use when a firmware builds and flashes with 0 errors but does nothing, when a CubeMX project has no visible output, when you need to compile/flash without opening uVision, or when PLL values from a .ioc have to be sanity-checked before trusting them.
+description: Get an STM32F4 board from "it flashed fine but the LED is dark" to a verified blink, using the Keil command line (UV4 -b / -f) and CubeMX-generated projects. Covers the clock-config traps that silently park the MCU in Error_Handler, LED polarity and pin-mapping checks, and the exact log markers that prove a build or a flash really succeeded. Use when a firmware builds and flashes with 0 errors but does nothing, when a CubeMX project has no visible output, when you need to compile/flash without opening uVision, or when PLL values from a .ioc have to be sanity-checked before trusting them. Also load it for the setup side — 用 CubeMX 新建工程 / 新建 CubeMX 工程 / 生成 Keil 工程 / 用 CubeMX + Keil 做个 xxx / .ioc 需要能生成代码 / CubeMX 批处理卡住或挂住 / 让 CubeMX 在命令行生成 — the headless recipe, the sandbox trap that makes javaw die silently, and the rule that only a CubeMX-saved .ioc generates.
 ---
 
 # STM32F4 bring-up: build, flash, and prove it runs
@@ -154,6 +154,16 @@ Select-String -Path dis.txt -Pattern "0x7d0|HAL_Delay" -Context 2,2
   (`PLL.PLLQ = 7;`).
 - GUI automation is only for dialogs. Its UIA tree exposes the window frame and
   nothing else (Java/SWT), so it needs pixels and verified clicks.
+- **Sandbox kills CubeMX silently.** Under a write-restricted sandbox
+  (`workspace-write`), CubeMX cannot write `%USERPROFILE%\.stm32cubemx\`, so
+  `javaw` exits within seconds and the log file's mtime simply stops — no error,
+  no new line, and the launcher's exit code is already 0. Before blaming the
+  `.ioc`, check: does the log have a new mtime? does `javaw` still exist? If
+  both are no, it never ran. Re-run with write access to the home directory (or
+  ask the user), do not retry blindly three times.
+- A migration/dialog prompt inside the CubeMX window is a **self-drawn Swing
+  panel, not a separate HWND** — enumerating windows will not find it. Capture
+  the main window and look at the pixels.
 
 ## 6. Definition of done
 

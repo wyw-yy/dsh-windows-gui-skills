@@ -569,3 +569,27 @@ if ($PSScriptRoot) {
     $fo = Join-Path $PSScriptRoot 'flyouts.ps1'
     if (Test-Path $fo) { . $fo }
 }
+
+# --- Human-activity check: do not steal the input while someone is typing. ---
+# GetLastInputInfo returns the tick of the last real keyboard/mouse event.
+if (-not ('UserIdle' -as [type])) {
+  Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class UserIdle {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
+  [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+  [DllImport("kernel32.dll")] public static extern uint GetTickCount();
+  public static uint Seconds() {
+    LASTINPUTINFO li = new LASTINPUTINFO();
+    li.cbSize = (uint)Marshal.SizeOf(li);
+    if (!GetLastInputInfo(ref li)) { return 0; }
+    uint now = GetTickCount();
+    uint idle = (now >= li.dwTime) ? (now - li.dwTime) : 0;
+    return idle / 1000;
+  }
+}
+"@
+}
+function Get-UserIdleSeconds { [UserIdle]::Seconds() }

@@ -87,6 +87,20 @@ State assumptions in one compact block **before** acting, and make them cheap to
 
 Then proceed. Do not wait for approval on reversible assumptions.
 
+### Mid-task interruption: ask before taking the screen
+
+Asking at the start is not enough. The moment you are about to move the user's
+mouse, steal focus, or type into their app, say it in one line and give them a
+way out:
+
+```
+接下来我要点你的屏幕，大约 30 秒；正在打字就喊停。
+```
+
+If they answer anything at all, stop the automation — not just the next click.
+Two focus steals without warning is how a "quick dialog" turns into five wasted
+minutes and a lost draft.
+
 ## 7. After the answers
 
 1. **Restate the contract in one line** — "好，A 方案：改 `App/`，不动 CubeMX 生成的，2 小时内给你能跑的版本。"

@@ -107,6 +107,21 @@ Focus-Window $w                       # ShowWindow(SW_RESTORE) + SetForegroundWi
 Polling beats sleeping: a fixed 5 s sleep is wrong on both a fast and a slow run,
 and it still fails when the app takes 6 s.
 
+### "Do not steal the input" needs a number, not good intentions
+
+Before the first synthetic click or paste, check how long the human has been
+idle:
+
+```powershell
+$idle = Get-UserIdleSeconds    # GetLastInputInfo, seconds since last real input
+if ($idle -lt 2) { throw "user is active (idle ${idle}s): ask before touching the desktop" }
+```
+
+`> 2 s` is the bar. Under it, a person is typing or moving the mouse: your click
+lands in their flow, or their motion lands in the middle of yours. If you must
+proceed anyway, say so first ("接下来我要点你的屏幕，大约 30 秒；正在打字就喊停") —
+and if the user answers, stop the automation, not just the click.
+
 ## Consoles and terminals
 
 The window you see for `cmd.exe` / `powershell.exe` belongs to

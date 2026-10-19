@@ -105,6 +105,11 @@ The script forces UTF-8 on stdout; without that, CJK titles crash on a GBK conso
 Measured here: STM32CubeMX 6.16 (SWT) exposes exactly 4 controls — the window
 buttons. CodeMirror-style grids and custom dialogs likewise.
 
+**SWT modal dialogs are often not windows at all.** The CubeMX migration prompt
+is a Swing panel drawn inside the main window; `EnumWindows` finds nothing new,
+so "wait for a dialog window" always times out. Capture the main window, diff
+it, and act on pixels there.
+
 ## Virtualisation and duplicates
 
 - Scrolled lists expose only realised rows; a match "not found" may just be off

@@ -22,6 +22,20 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 . "$env:USERPROFILE\.agents\skills\windows-gui-control\scripts\ui.ps1"
 ```
 
+## Before the loop: keep the process alive, and know the sandbox
+
+- **A GUI launched from `pwsh` dies when that tool call returns.** Start it in a
+  background job, or launch it detached and re-discover its windows by PID before
+  every action. Same for any helper you spawn.
+- **A write-restricted sandbox blocks desktop apps that write under
+  `%USERPROFILE%`** — they exit in seconds with no message and no log growth. If
+  a window never appears and the log mtime is frozen, suspect the sandbox before
+  suspecting the command.
+- **Self-drawn dialogs are not windows.** A Java/SWT modal (CubeMX migration
+  prompt) lives inside the main window's pixels; `EnumWindows` will never show
+  it. Verify by capturing the owner window and diffing, not by looking for a new
+  HWND.
+
 ## The loop
 
 1. **Baseline.** Capture before acting: `$before = Get-WindowShot -Window $w -Path $b`.
