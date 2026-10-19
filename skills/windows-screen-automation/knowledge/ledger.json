@@ -1,0 +1,42 @@
+{
+    "skill":  "windows-screen-automation",
+    "updated":  "2026-10-19 19:40",
+    "entries":  [
+                    {
+                        "key":  "screen.diff.cluster",
+                        "statement":  "逐像素差分按网格聚类（24px 单元、\u003e=20 变化像素），否则 0.1% 噪声把 bbox 拉成整屏。",
+                        "scope":  "screen",
+                        "confidence":  5,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "静止桌面 0.1% 变化",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "screen.flyout.timing",
+                        "statement":  "悬停浮层 300-1000ms 就消失；动作与截图必须在同一次进程调用里连拍。",
+                        "scope":  "screen",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "tooltip 实测",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "screen.baseline.before",
+                        "statement":  "连拍基线必须在触发动作之前取；拿第一帧当基线会把已出现的浮层当背景，差分恒为 0。",
+                        "scope":  "screen",
+                        "confidence":  5,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "0.1.7 修 Capture-HoverFlyout",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}

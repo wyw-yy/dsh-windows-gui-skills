@@ -1,0 +1,42 @@
+{
+    "skill":  "windows-uia-inspector",
+    "updated":  "2026-10-19 19:40",
+    "entries":  [
+                    {
+                        "key":  "uia.electron.empty",
+                        "statement":  "Electron/Chromium（QQ NT、LCEDA、DSH）UIA 只暴露窗口装饰，无业务控件；回落到坐标+截图。",
+                        "scope":  "uia",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "三个应用实测",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "uia.java.swt",
+                        "statement":  "Java/SWT（CubeMX 6.16.1）UIA 只有最小化/最大化/关闭；jabswitch -enable 实测无效，别试第二次。",
+                        "scope":  "uia",
+                        "confidence":  5,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "CubeMX 6.16.1",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "uia.click.prefer",
+                        "statement":  "能 Invoke/Select/Toggle 就别物理点击；物理点击前必须确认目标在前台。",
+                        "scope":  "uia",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "UIATEST 实测",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}

@@ -1,0 +1,30 @@
+{
+    "skill":  "windows-input-bridge",
+    "updated":  "2026-10-19 19:40",
+    "entries":  [
+                    {
+                        "key":  "input.ime.clipboard",
+                        "statement":  "中文输入法会污染 SendKeys（hello 会变成 hello- typed 加乱码）；一律用剪贴板粘贴。",
+                        "scope":  "input",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "记事本实测",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "input.focus.steal",
+                        "statement":  "输入后必须回读校验：uVision 启动闪屏之类的窗口会抢焦点，字会打到别的窗口。",
+                        "scope":  "input",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "PLLN 输入丢失",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}

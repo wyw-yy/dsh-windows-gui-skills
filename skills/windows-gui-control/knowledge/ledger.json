@@ -1,0 +1,78 @@
+{
+    "skill":  "windows-gui-control",
+    "updated":  "2026-10-19 19:40",
+    "entries":  [
+                    {
+                        "key":  "gui.handle.rebuild",
+                        "statement":  "应用会销毁重建 HWND；点击前必须现查句柄与矩形，禁止跨调用缓存坐标。",
+                        "scope":  "gui",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "QQ 3 次、LCEDA 2 次",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.electron.paint",
+                        "statement":  "Electron/Chromium 窗口经 ShowWindow 显示后不绘制（黑/白）；只能让应用自己显示：托盘、任务栏按钮、应用内快捷键（QQ 主面板 Ctrl+Alt+Z）。",
+                        "scope":  "gui",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "QQ、LCEDA、CubeMX",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.dpi.aware",
+                        "statement":  "进程内 SetProcessDPIAware 后点击坐标与屏幕像素 1:1；不做时 150% 缩放点偏 1.5 倍，表现为点了没反应。",
+                        "scope":  "gui",
+                        "confidence":  5,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "137% 与 150% 缩放各一次",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.popup.hwnd",
+                        "statement":  "菜单/下拉/提示是独立 HWND；窗口截图看不到浮层，验证浮层要全屏图或枚举新窗口。",
+                        "scope":  "gui",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "LCEDA 文件菜单、WinForms tooltip",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.button.moved",
+                        "statement":  "换窗口宽度按钮位置会变（QQ 发送键 1340→1076）；每次从当前截图定位。",
+                        "scope":  "gui",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "QQ 主面板紧凑/全屏两种布局",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "gui.verify.pixel",
+                        "statement":  "像素差只证明重绘，不证明输入落进去；输入类动作要用产物验证（剪贴板、标签、新窗口）。",
+                        "scope":  "gui",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "控制台 echo 假阴性",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}

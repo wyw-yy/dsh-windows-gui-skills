@@ -1,4 +1,4 @@
-﻿## 0.1.8 - 2026-10-18
+## 0.1.8 - 2026-10-18
 
 - eferences/app-ui-notes.md: added the measured QQ NT section - main panel toggle is
   Ctrl+Alt+Z (not a click), the panel layout in window-relative coordinates, and the
@@ -94,6 +94,8 @@ self-match on an identical screenshot scores 0 at the exact position.
 - 鏈€灏忓寲绐楀彛鏃犳硶鎴浘锛堢煩褰㈤€€鍖栦负 158脳26锛夛紱
 - 鍚姩鍣ㄨ繘绋?PID 鈮?绐楀彛 PID锛圵in11 鎵撳寘搴旂敤浼氬鐢ㄥ疄渚嬶級锛宍Get-WindowByPid` 鍙兘杩斿洖 `$null`锛岃剼鏈凡鍔?`Assert-Window` 鏄庣‘鎶ラ敊銆?
 
+## 0.2.0 (2026-10-19)
 
-
-
+- 每个技能新增 knowledge/ 经验库：lessons.md（生成物，<=40 行）+ ledger.json（计数与证据）。
+- 新增 scripts/lesson.ps1：dd / hit / miss / list / prune；命中每 3 次 +1 置信，矛盾连续 2 次 -1，降到 1 标 [REFUTED]；超过 40 条按置信/时效/命中淘汰。
+- 首批 20 条经验入库（gui.* / screen.* / uia.* / input.* / embed.*）。

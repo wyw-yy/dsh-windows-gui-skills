@@ -1,0 +1,66 @@
+{
+    "skill":  "stm32f4-bringup",
+    "updated":  "2026-10-19 19:40",
+    "entries":  [
+                    {
+                        "key":  "embed.verify.not.running",
+                        "statement":  "Verify OK 只证明字节写进 Flash，不证明程序在跑；必须看输出（串口/LED/调试器）。",
+                        "scope":  "embed",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "MX_PA11_LED 灯不亮",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "embed.hsi.pll",
+                        "statement":  "F4 用 HSI 时 PLLM 按 16MHz 算（16→84MHz）；按 8 算会 VCO 越界→HAL_TIMEOUT→进 Error_Handler 死循环。",
+                        "scope":  "embed",
+                        "confidence":  5,
+                        "hits":  3,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "CubeMX 生成工程",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "embed.uvoptx.devtool",
+                        "statement":  "烧录报 Target DLL cancelled / Internal DLL Error，多半是 .uvoptx 里调试器选错；复制可用工程的 uvoptx 并改 TargetName 最稳。",
+                        "scope":  "embed",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "F401_IMU_ENC",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "embed.uvprojx.bom",
+                        "statement":  "uvprojx 带 BOM 会让 UV4 直接不干活（exit 15、无 build.log）；用 UTF8Encoding(false) 写回。",
+                        "scope":  "embed",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "F401_IMU_ENC",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    },
+                    {
+                        "key":  "embed.errorhandler.blink",
+                        "statement":  "把 Error_Handler 改成裸寄存器闪灯，能让时钟没起来这类静默故障可见。",
+                        "scope":  "embed",
+                        "confidence":  4,
+                        "hits":  2,
+                        "misses":  0,
+                        "status":  "active",
+                        "evidence":  "MX_PA11_LED 修复",
+                        "added":  "2026-10-19",
+                        "last_verified":  "2026-10-19"
+                    }
+                ]
+}

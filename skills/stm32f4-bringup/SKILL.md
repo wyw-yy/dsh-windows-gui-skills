@@ -162,3 +162,13 @@ Select-String -Path dis.txt -Pattern "0x7d0|HAL_Delay" -Context 2,2
 3. The disassembly contains the delay/constant you intended.
 4. **The human confirms the LED rhythm.** Without step 4 the job is unverified —
    say so instead of claiming success.
+
+## 经验库（自动维护）
+
+`knowledge\lessons.md` 是本技能的经验条目（<=40 行，加载技能时一并读）。
+判据：**换一个任务，这句话还用得上吗？** 工程参数、账号、一次性坐标不要写。
+
+- 命中（按它做并且成功）：`lesson.ps1 hit  -Skill <本技能> -Key <key>`
+- 矛盾（按它做失败）：`lesson.ps1 miss -Skill <本技能> -Key <key>`（连续 2 次降一级，降到 1 标 [REFUTED]，保留但不再采用）
+- 新增：只在“同一坑踩两次 / 结果推翻假设 / 用户明确指教”时
+  `lesson.ps1 add -Skill <本技能> -Key <域>.<主题> -Text "<一句话规则>" -Confidence 3-5`
