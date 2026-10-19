@@ -2,6 +2,26 @@
 
 All notable changes to this skill package. Newest first.
 
+## 0.2.5 - 2026-10-19
+
+The skills were right but never loaded, because `AGENTS.md` is injected every
+turn and a skill catalog only shows a truncated description. So the three rules
+that turn a session into a wasted one moved to the always-read file, and the two
+remaining traps became one-line conclusions instead of table rows.
+
+- Workspace `AGENTS.md` §四 now opens with the three "otherwise the day is gone"
+  rules: sandbox silently kills CubeMX; a `pwsh`-launched GUI dies with the call;
+  `ui.ps1` is only valid from the installed path (a workspace `tools\ui.ps1` is a
+  10-function stale copy missing the verification functions).
+- `stm32f4-bringup` §5 opens with the conclusion: under the desktop sandbox,
+  CubeMX 6.16.1 executed nothing (no log lines, no `Bye bye`, `javaw` gone,
+  launcher exit 0), one attempt ≈ 170 s, check home-directory write access before
+  the first retry, never burn a third run. Also added the field note that
+  aligning `MxCube.Version` with 6.16.1 can unstick a silent no-op, while bumping
+  `MxDb.Version` by hand turns it into the `Mcu.getDie()` NPE.
+- `windows-screen-automation` failure table: `Changed=False` + **title changed** +
+  SWT window = the click worked; do not click a second time.
+
 ## 0.2.4 - 2026-10-19
 
 Fixes from using the skills on a real CubeMX session that failed three times

@@ -120,6 +120,7 @@ and screenshot the screen instead.
 |---|---|---|
 | `Changed=False`, window title unchanged | click missed (scale/offset) | re-shoot, recompute scale |
 | `Changed=False` **but the action worked** | only a caret / console text changed; PrintWindow sees the last painted frame | verify with an artifact (clipboard, file, log, title), never with pixels alone |
+| `Changed=False` **but the window title changed** | **the click worked.** SWT/Java repaints into a surface PrintWindow does not see, and the title is the only evidence that leaks out | stop — do **not** click a second time; confirm via title/content and move on |
 | click visibly hits but nothing happens | app busy / wrong element / needs double-click | wait for idle title, try `DblClick` |
 | `Get-WindowCapture` all black | GPU-composited surface | `Focus-Window` then `Get-Screen` |
 | image is the *desktop*, not the app | window moved between shot and click | re-shoot, click immediately |

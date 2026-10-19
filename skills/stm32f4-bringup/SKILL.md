@@ -141,6 +141,13 @@ Select-String -Path dis.txt -Pattern "0x7d0|HAL_Delay" -Context 2,2
 
 ## 5. CubeMX specifics
 
+**Read this before the first `-q` run:** on this machine, CubeMX 6.16.1 under a
+desktop sandbox executed nothing at all — no new log lines, no `Bye bye`, `javaw`
+gone within seconds, launcher exit code still 0. One attempt costs ~170 s. Check
+write access to `%USERPROFILE%\.stm32cubemx\` **before** the first retry; never
+spend a third run on the same unexplained silence. When it does run, success is
+`Bye bye` in a log whose mtime just moved — nothing else.
+
 - Headless: `STM32CubeMX.exe -q gen.txt`, where `gen.txt` is
   `config load <abs .ioc>` / `project generate` / `exit`. The launcher `.exe`
   forks `javaw` and returns immediately — watch the log for `Bye bye`, not the
@@ -148,6 +155,10 @@ Select-String -Path dis.txt -Pattern "0x7d0|HAL_Delay" -Context 2,2
 - The `.ioc` must be one CubeMX itself wrote. A hand-written minimal `.ioc`
   fails with `IP not ready for code generation: Clock`, and a mismatched
   `MxDb.Version` triggers a database migration that can NPE on `Mcu.getDie()`.
+- Field note: aligning `MxCube.Version` with the installed build (6.16.1) is often
+  what stops a silent no-op on an `.ioc` written by an older CubeMX. Do **not**
+  also bump `MxDb.Version` by hand — measured: `DB.6.0.91` → `DB.6.0.161` turned
+  a working file into the `Mcu.getDie()` NPE.
 - Editing `.ioc` text works for RCC keys, but CubeMX rewrites derived values on
   the next save, and `RCC.PLLQ=RCC_PLLQ_DIV7` may still emit
   `RCC_PLLQ_DIV7` in C, which is not a macro in this HAL — it wants a number
