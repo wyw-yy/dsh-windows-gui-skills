@@ -14,7 +14,10 @@
 [CmdletBinding()]
 param(
     [ValidateSet('gen', 'verify')][string]$Mode = 'verify',
-    [string]$Root = ''
+    [string]$Root = '',
+    # Delivery folders carry extra docs (NOTE.md, REVIEW-*.md); ignore those
+    # instead of failing the whole check.
+    [switch]$AllowExtra
 )
 
 $ErrorActionPreference = 'Stop'
@@ -74,12 +77,19 @@ $bad = 0; $checked = 0
 foreach ($f in Get-Files) {
     $rel = Get-Rel $f.FullName
     $checked++
-    if (-not $want.ContainsKey($rel)) { Write-Output ("  MISSING IN MANIFEST  " + $rel); $bad++; continue }
+    if (-not $want.ContainsKey($rel)) {
+        if ($AllowExtra) { Write-Output ("  extra (ignored)  " + $rel) }
+        else { Write-Output ("  MISSING IN MANIFEST  " + $rel); $bad++ }
+        continue
+    }
     $got = Get-NormHash $f.FullName
     if ($got -ne $want[$rel]) { Write-Output ("  MISMATCH  " + $rel); $bad++ }
 }
 foreach ($k in $want.Keys) {
-    if (-not (Test-Path (Join-Path $Root ($k -replace '/', '\')))) { Write-Output ("  FILE GONE  " + $k); $bad++ }
+    if (-not (Test-Path (Join-Path $Root ($k -replace '/', '\')))) {
+        if ($AllowExtra) { Write-Output ("  absent (ignored)  " + $k) }
+        else { Write-Output ("  FILE GONE  " + $k); $bad++ }
+    }
 }
 Write-Output ("checked " + $checked + " files, " + $bad + " problem(s)")
 if ($bad -gt 0) { exit 1 }
